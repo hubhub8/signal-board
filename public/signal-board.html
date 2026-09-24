@@ -40,6 +40,8 @@ button { font-family:inherit; cursor:pointer; }
 .theme-group { display:inline-flex; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:4px; gap:4px; }
 .theme-btn { border:none; background:transparent; color:var(--muted); font-size:12px; font-weight:500; padding:7px 16px; border-radius:9px; display:flex; align-items:center; gap:8px; transition:all 0.2s; }
 .theme-btn.on { background:rgba(47,214,195,0.1); color:var(--accent); font-weight:700; }
+.theme-btn.icon { padding:8px; }
+.theme-btn.icon svg { display:block; }
 .theme-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
 .theme-btn.on .theme-dot { box-shadow:0 0 8px currentColor; }
 .board-header { padding:18px 20px 14px; max-width:1200px; margin:0 auto; display:flex; align-items:center; gap:14px; }
@@ -161,9 +163,12 @@ button { font-family:inherit; cursor:pointer; }
     <div class="ctrl-row">
       <span class="theme-label">Theme</span>
       <div class="theme-group">
-        <button class="theme-btn on" data-theme="dark-teal" onclick="setTheme('dark-teal')"><span class="theme-dot" style="background:#2fd6c3"></span> Dark Teal</button>
-        <button class="theme-btn" data-theme="midnight-navy" onclick="setTheme('midnight-navy')"><span class="theme-dot" style="background:#fbbf24"></span> Midnight Navy</button>
-        <button class="theme-btn" data-theme="mono-accent" onclick="setTheme('mono-accent')"><span class="theme-dot" style="background:#00ff88"></span> Mono+Accent</button>
+        <button class="theme-btn icon on" data-theme="dark-teal" onclick="setTheme('dark-teal')" aria-label="Dunkles Theme" title="Dunkel">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        </button>
+        <button class="theme-btn icon" data-theme="light-neutral" onclick="setTheme('light-neutral')" aria-label="Helles Theme" title="Hell">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
       </div>
     </div>
   </div>
@@ -184,8 +189,7 @@ button { font-family:inherit; cursor:pointer; }
 // ===========================
 const THEMES = {
   'dark-teal': {'--bg':'#141617','--card':'#1e2223','--border':'#2c3132','--text':'#f1f4f2','--muted':'#98a2a1','--muted2':'#6d7675','--accent':'#2fd6c3','--cib':'#2fd6c3','--cib-bg':'rgba(47,214,195,0.07)','--isd':'#a78bfa','--isd-bg':'rgba(167,139,250,0.08)','--frd':'#f47b7b','--frd-bg':'rgba(244,123,123,0.06)','--fgd':'#4ade80','--fgd-bg':'rgba(74,222,128,0.06)','--header-bg':'rgba(24,27,26,0.92)'},
-  'midnight-navy': {'--bg':'#0a0e1a','--card':'#111827','--border':'#1e293b','--text':'#e2e8f0','--muted':'#94a3b8','--muted2':'#64748b','--accent':'#fbbf24','--cib':'#fbbf24','--cib-bg':'rgba(251,191,36,0.08)','--isd':'#06b6d4','--isd-bg':'rgba(6,182,212,0.08)','--frd':'#f87171','--frd-bg':'rgba(248,113,113,0.06)','--fgd':'#34d399','--fgd-bg':'rgba(52,211,153,0.06)','--header-bg':'rgba(10,14,26,0.95)'},
-  'mono-accent': {'--bg':'#09090b','--card':'#18181b','--border':'#27272a','--text':'#fafafa','--muted':'#a1a1aa','--muted2':'#71717a','--accent':'#00ff88','--cib':'#00ff88','--cib-bg':'rgba(0,255,136,0.06)','--isd':'#c084fc','--isd-bg':'rgba(192,132,252,0.06)','--frd':'#ff4757','--frd-bg':'rgba(255,71,87,0.06)','--fgd':'#2ed573','--fgd-bg':'rgba(46,213,115,0.06)','--header-bg':'rgba(9,9,11,0.95)'}
+  'light-neutral': {'--bg':'#f6f9f8','--card':'#ffffff','--border':'#dfe6e4','--text':'#14181a','--muted':'#5b6664','--muted2':'#8b9694','--accent':'#0d9488','--cib':'#0d9488','--cib-bg':'rgba(13,148,136,0.08)','--isd':'#7c5cfa','--isd-bg':'rgba(124,92,250,0.08)','--frd':'#dc4444','--frd-bg':'rgba(220,68,68,0.06)','--fgd':'#16a34a','--fgd-bg':'rgba(22,163,74,0.06)','--header-bg':'rgba(246,249,248,0.92)'}
 };
 
 // ===========================
