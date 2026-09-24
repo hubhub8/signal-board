@@ -108,7 +108,10 @@ def fetch_hour_bars(ticker):
     """Holt 60-Minuten-Balken der letzten 3 Monate ueber yfinance-cache und
     wandelt sie in eine einfache Liste von Dicts um. Zeitstempel werden auf
     NY-Zeit umgerechnet (tz-aware), damit die Buendelung unabhaengig von der
-    Boersenzeitzone des jeweiligen Tickers funktioniert."""
+    Boersenzeitzone des jeweiligen Tickers funktioniert. 'local_date' behaelt
+    zusaetzlich das Datum in der ORIGINALEN Boersenzeitzone (vor der NY-
+    Umrechnung) -- wird fuer den Tagesschluss-Abgleich in DAILY_CLOSE_OVERRIDE
+    gebraucht."""
 
     def _do():
         # yfinance-cache hat kein auto_adjust= (Signatur weicht von reinem
@@ -134,8 +137,49 @@ def fetch_hour_bars(ticker):
             continue
         if ts.tzinfo is None:
             ts = ts.tz_localize("UTC")
-        bars.append({"ts": ts.tz_convert(NY), "o": o, "h": h, "l": l, "c": c})
+        bars.append({"ts": ts.tz_convert(NY), "local_date": ts.date(), "o": o, "h": h, "l": l, "c": c})
     return bars
+
+
+# Instrumente, deren Boersensitzung lange vor 16:59 NY endet (z.B. Xetra bis
+# ca. 11:30 EDT): Yahoos Stundenbalken erfassen dort NICHT die eigentliche
+# Schlussauktion, nur den letzten Balken der regulaeren Sitzung -- das ergab
+# bei DE40 am 23.09.2026 einen um 16 Punkte falschen Schlusskurs (25426,55
+# statt echtem Xetra-Schluss 25410,63), der in Grenzfaellen die Klassifikation
+# kippen kann. Fuer diese Ticker wird der Schluss zusaetzlich mit Yahoos
+# nativem Tagesbalken abgeglichen (der die Auktion korrekt enthaelt) --
+# bewusst NICHT fuer alle Instrumente, da das Projekt aus gutem Grund nie
+# native Tagesbalken fuer Bereich/Buendelung vertraut (siehe Kommentar bei
+# trading_day_of/bucket_hourly) und diese gezielte Ausnahme nur den
+# Schlusskurs betrifft, nicht Hoch/Tief/Handelstag-Zuordnung.
+DAILY_CLOSE_OVERRIDE_TICKERS = {"^GDAXI"}
+
+
+def fetch_daily_closes(ticker):
+    """Holt native Tagesbalken und liefert die von Yahoo autoritativ
+    berechneten Schlusskurse (inkl. Schlussauktion), indiziert nach dem
+    Kalendertag in der Boersenzeitzone des Tickers."""
+
+    def _do():
+        df = yfc.Ticker(ticker).history(
+            period="3mo", interval="1d", adjust_splits=False, adjust_divs=False
+        )
+        if df is None or df.empty:
+            raise ValueError(f"Keine Tagesdaten fuer {ticker}")
+        return df
+
+    try:
+        df = retry(_do)
+    except Exception:
+        return {}
+    df = flatten_columns(df)
+
+    closes = {}
+    for ts, row in df.iterrows():
+        c = safe_float(row.get("Close"))
+        if c is not None:
+            closes[ts.date()] = c
+    return closes
 
 
 # ===========================
@@ -149,10 +193,14 @@ def trading_day_of(ny_dt):
     return d
 
 
-def bucket_hourly(bars):
+def bucket_hourly(bars, daily_closes=None):
     """Buendelt Stundenbalken zu Handelstagen. Schluss = letzter Balken bis
     einschliesslich 16:59 NY (nicht exakte Minutenuebereinstimmung), sonst
-    der letzte verfuegbare Balken des Tages."""
+    der letzte verfuegbare Balken des Tages. Falls daily_closes uebergeben
+    wird (siehe DAILY_CLOSE_OVERRIDE_TICKERS) und ein passender nativer
+    Tagesschluss existiert, ersetzt dieser den stundenbalken-basierten
+    Schluss -- Hoch/Tief/Handelstag-Zuordnung bleiben unangetastet."""
+    daily_closes = daily_closes or {}
     buckets = {}
     for b in bars:
         day = trading_day_of(b["ts"])
@@ -169,6 +217,13 @@ def bucket_hourly(bars):
             if minute_of_day <= CLOSE_REF_MIN_NY:
                 close_bar = b
         c = close_bar["c"] if close_bar else day_bars[-1]["c"]
+
+        local_dates = {b["local_date"] for b in day_bars}
+        if len(local_dates) == 1:
+            override = daily_closes.get(next(iter(local_dates)))
+            if override is not None:
+                c = override
+
         days.append({"day": day, "o": day_bars[0]["o"], "h": h, "l": l, "c": c})
     return days
 
@@ -216,7 +271,10 @@ def compute_instrument(inst, now_ny):
     if len(bars) < 10:
         raise ValueError("zu wenige Balken")
 
-    days = bucket_hourly(bars)
+    daily_closes = None
+    if inst["ticker"] in DAILY_CLOSE_OVERRIDE_TICKERS:
+        daily_closes = fetch_daily_closes(inst["ticker"])
+    days = bucket_hourly(bars, daily_closes)
 
     if inst["ticker"] == "BTC-USD":
         # BTC ist nur Mo-Fr relevant -- Wochenend-Buckets verwerfen
