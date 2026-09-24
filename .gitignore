@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.wrangler/
+*.log
+__pycache__/
+*.pyc
+public/*diff*.html
+archiv/
+
+# public/data/signals.json wird bewusst NICHT ignoriert -- die GitHub Action
+# committet sie taeglich, Cloudflare Pages liefert sie als statische Datei aus.

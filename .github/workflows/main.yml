@@ -1,0 +1,50 @@
+# Taeglicher Lauf der Python-Pipeline: holt Yahoo-Daten, klassifiziert sie
+# und committet das Ergebnis-JSON (public/data/signals.json) zurueck ins Repo.
+# Cloudflare Pages deployt bei jedem Push automatisch neu und liefert die
+# Datei dann als normale statische Datei mit aus -- kein R2, keine
+# zusaetzlichen Secrets noetig, nur der von GitHub automatisch bereitgestellte
+# GITHUB_TOKEN (ueber "permissions: contents: write" unten freigeschaltet).
+name: Daily Signals
+
+on:
+  schedule:
+    # 03:00 UTC = 23:00 NY im Sommer (EDT) bzw. 22:00 NY im Winter (EST) --
+    # beides liegt sicher NACH dem 18:00-NY-Rollover und erreicht die
+    # spaeteste Zielzeit (23:00 NY). Entspricht 05:00 deutscher Zeit
+    # ganzjaehrig, da DE und NY beide auf Sommerzeit umstellen und der
+    # 1-Stunden-Versatz zwischen ihnen konstant bleibt (siehe README).
+    - cron: "0 3 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: daily-signals
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  generate-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Abhaengigkeiten installieren
+        run: pip install -r python/requirements.txt
+
+      - name: Signale generieren (schreibt public/data/signals.json)
+        run: python python/generate_signals.py
+
+      - name: Commit signals.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/signals.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: daily signals update $(date -u +%Y-%m-%d)"
+          git push

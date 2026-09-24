@@ -1,0 +1,6 @@
+# Referenzkopie -- die AKTIVE Datei liegt unter public/_redirects (Cloudflare
+# Pages liest _headers/_redirects nur aus dem Build-Ausgabe-Ordner).
+# Nur exakt "/" matchen (kein "/*") und Ziel ohne ".html" -- siehe Kommentare
+# in public/_redirects (zwei beobachtete Bugs: Wildcard ueberschreibt echte
+# Dateien wie /data/signals.json; ".html"-Ziel erzeugt eine Redirect-Schleife).
+/  /signal-board  200

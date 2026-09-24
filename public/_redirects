@@ -1,0 +1,11 @@
+# Muss im Build-Ausgabe-Ordner (public/) liegen, damit Cloudflare sie liest.
+# Kurzer Link: signal-board-vfw.pages.dev/ (ohne Dateinamen) zeigt sonst 404,
+# weil es keine index.html gibt -- leitet stattdessen auf das Board um.
+# WICHTIG: nur EXAKT "/" matchen, kein "/*" -- ein Wildcard ueberschreibt auf
+# Cloudflare Pages (anders als bei Netlify) auch echte vorhandene Dateien wie
+# /data/signals.json, /fallback.json etc. (beobachtet und gefixt 2026-09-24:
+# /data/signals.json lieferte ploetzlich HTML statt JSON).
+# Ziel ohne ".html" -- Cloudflares "Clean URLs"-Feature entfernt .html sonst
+# automatisch per eigenem Redirect, was mit "/signal-board.html" als Ziel eine
+# Redirect-Schleife erzeugt (ebenfalls beobachtet und gefixt 2026-09-24).
+/  /signal-board  200

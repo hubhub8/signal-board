@@ -1,0 +1,15 @@
+# Referenzkopie -- die AKTIVE Datei, die Cloudflare Pages tatsaechlich liest,
+# liegt unter public/_headers (Cloudflare liest _headers/_redirects nur aus
+# dem Build-Ausgabe-Ordner). Bei Aenderungen beide Dateien synchron halten.
+#
+# Header fuer Cloudflare Pages. Da signals.json ab jetzt zusammen mit dem
+# Board aus demselben Repo/derselben Domain ausgeliefert wird (kein R2 mehr),
+# braucht es keine CORS-Freigabe -- nur die uebernommenen Sicherheits-Header
+# aus netlify.toml plus einen kurzen Cache fuer die Signaldatei.
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/data/*
+  Cache-Control: public, max-age=300

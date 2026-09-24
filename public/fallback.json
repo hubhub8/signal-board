@@ -1,0 +1,344 @@
+{
+  "updated": "2026-09-22T08:00:00+02:00",
+  "tradingDay": "2026-09-22",
+  "kw": 39,
+  "signals": [
+    {
+      "sym": "DE40",
+      "sec": "Indizes",
+      "dec": 1,
+      "o": 24250,
+      "h": 24412,
+      "l": 24180,
+      "c": 24398,
+      "pH": 24385,
+      "pL": 24102,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "up",
+      "cls": {
+        "cat": "CIB",
+        "dir": 1,
+        "touched": [
+          "PDH"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "US500",
+      "sec": "Indizes",
+      "dec": 2,
+      "o": 6815,
+      "h": 6868,
+      "l": 6788,
+      "c": 6810,
+      "pH": 6862,
+      "pL": 6775,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "up",
+      "cls": {
+        "cat": "FRD",
+        "dir": 0,
+        "touched": [
+          "PDH"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "US30",
+      "sec": "Indizes",
+      "dec": 0,
+      "o": 47720,
+      "h": 48060,
+      "l": 47510,
+      "c": 47655,
+      "pH": 47985,
+      "pL": 47452,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "up",
+      "cls": {
+        "cat": "FRD",
+        "dir": 0,
+        "touched": [
+          "PDH"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "USTEC",
+      "sec": "Indizes",
+      "dec": 2,
+      "o": 23920,
+      "h": 24388,
+      "l": 23842,
+      "c": 24341,
+      "pH": 24105,
+      "pL": 23730,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "up",
+      "cls": {
+        "cat": "CIB",
+        "dir": 1,
+        "touched": [
+          "PDH"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "US2000",
+      "sec": "Indizes",
+      "dec": 1,
+      "o": 2226.4,
+      "h": 2252.9,
+      "l": 2214.6,
+      "c": 2249.1,
+      "pH": 2245.8,
+      "pL": 2201.3,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "up",
+      "cls": {
+        "cat": "CIB",
+        "dir": 1,
+        "touched": [
+          "PDH"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "GC",
+      "sec": "Metalle",
+      "dec": 1,
+      "o": 4428.0,
+      "h": 4445.2,
+      "l": 4376.8,
+      "c": 4381.9,
+      "pH": 4462.0,
+      "pL": 4407.5,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "down",
+      "cls": {
+        "cat": "CIB",
+        "dir": -1,
+        "touched": [
+          "PDL"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "SI",
+      "sec": "Metalle",
+      "dec": 3,
+      "o": 52.6,
+      "h": 53.31,
+      "l": 51.8,
+      "c": 52.12,
+      "pH": 53.02,
+      "pL": 51.44,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "up",
+      "cls": {
+        "cat": "FRD",
+        "dir": 0,
+        "touched": [
+          "PDH"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "PL",
+      "sec": "Metalle",
+      "dec": 1,
+      "o": 1376.4,
+      "h": 1398.7,
+      "l": 1354.6,
+      "c": 1377.8,
+      "pH": 1392.5,
+      "pL": 1358.2,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "up",
+      "cls": {
+        "cat": "NONE",
+        "dir": 0,
+        "touched": [
+          "PDH",
+          "PDL"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "CL",
+      "sec": "Energie",
+      "dec": 2,
+      "o": 63.1,
+      "h": 64.55,
+      "l": 62.8,
+      "c": 64.36,
+      "pH": 64.02,
+      "pL": 62.31,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "up",
+      "cls": {
+        "cat": "CIB",
+        "dir": 1,
+        "touched": [
+          "PDH"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "EURUSD",
+      "sec": "Forex",
+      "dec": 5,
+      "o": 1.084,
+      "h": 1.0872,
+      "l": 1.0826,
+      "c": 1.0869,
+      "pH": 1.0865,
+      "pL": 1.0812,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "up",
+      "cls": {
+        "cat": "CIB",
+        "dir": 1,
+        "touched": [
+          "PDH"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "GBPUSD",
+      "sec": "Forex",
+      "dec": 5,
+      "o": 1.272,
+      "h": 1.2754,
+      "l": 1.2705,
+      "c": 1.2718,
+      "pH": 1.2748,
+      "pL": 1.2691,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "up",
+      "cls": {
+        "cat": "FRD",
+        "dir": 0,
+        "touched": [
+          "PDH"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "AUDUSD",
+      "sec": "Forex",
+      "dec": 5,
+      "o": 0.6625,
+      "h": 0.6648,
+      "l": 0.6612,
+      "c": 0.6634,
+      "pH": 0.6642,
+      "pL": 0.6601,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "up",
+      "cls": {
+        "cat": "NONE",
+        "dir": 0,
+        "touched": [
+          "PDH"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "USDCAD",
+      "sec": "Forex",
+      "dec": 5,
+      "o": 1.3412,
+      "h": 1.3452,
+      "l": 1.3396,
+      "c": 1.3401,
+      "pH": 1.3448,
+      "pL": 1.3389,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "down",
+      "cls": {
+        "cat": "NONE",
+        "dir": 0,
+        "touched": [
+          "PDH"
+        ],
+        "badges": []
+      }
+    },
+    {
+      "sym": "BTCUSD",
+      "sec": "Krypto",
+      "dec": 2,
+      "o": 79800,
+      "h": 80210,
+      "l": 78320,
+      "c": 78504,
+      "pH": 80543,
+      "pL": 78663,
+      "pwH": null,
+      "pwL": null,
+      "pmH": null,
+      "pmL": null,
+      "yesterdayDir": "up",
+      "cls": {
+        "cat": "CIB",
+        "dir": -1,
+        "touched": [
+          "PDL"
+        ],
+        "badges": []
+      }
+    }
+  ]
+}

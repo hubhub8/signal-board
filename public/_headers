@@ -1,0 +1,10 @@
+# Header fuer Cloudflare Pages. Muss im Build-Ausgabe-Ordner (public/) liegen,
+# damit Cloudflare sie tatsaechlich liest -- eine Kopie liegt zur Referenz auch
+# unter cloudflare/_headers.
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/data/*
+  Cache-Control: public, max-age=300

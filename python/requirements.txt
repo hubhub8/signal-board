@@ -1,0 +1,2 @@
+yfinance-cache>=0.8
+pandas>=2.0

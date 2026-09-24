@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#141617">
+<link rel="manifest" href="/manifest.json">
+<title>Signal Board</title>
+<style>
+:root {
+  --bg:#141617; --card:#1e2223; --border:#2c3132; --text:#f1f4f2;
+  --muted:#98a2a1; --muted2:#6d7675; --accent:#2fd6c3;
+  --cib:#2fd6c3; --cib-bg:rgba(47,214,195,0.07);
+  --isd:#a78bfa; --isd-bg:rgba(167,139,250,0.08);
+  --frd:#f47b7b; --frd-bg:rgba(244,123,123,0.06);
+  --fgd:#4ade80; --fgd-bg:rgba(74,222,128,0.06);
+  --header-bg:rgba(24,27,26,0.92);
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif; min-height:100vh; padding-bottom:env(safe-area-inset-bottom,0); }
+button { font-family:inherit; cursor:pointer; }
+.ctrl-header { position:sticky; top:0; z-index:50; background:var(--header-bg); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-bottom:1px solid var(--border); padding:14px 20px; }
+.ctrl-inner { max-width:1200px; margin:0 auto; }
+.ctrl-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:10px; }
+.ctrl-title { font-size:13px; font-weight:700; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; }
+.ctrl-row { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.live-badge { display:flex; align-items:center; gap:8px; padding:6px 12px; border-radius:8px; font-size:11px; font-weight:600; }
+.live-badge.loading { background:rgba(47,214,195,0.08); border:1px solid rgba(47,214,195,0.25); color:var(--accent); }
+.live-badge.live { background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.25); color:#4ade80; }
+.live-badge.static { background:rgba(109,118,117,0.08); border:1px solid var(--border); color:var(--muted2); }
+.live-dot { width:6px; height:6px; border-radius:50%; }
+.live-badge.loading .live-dot { background:var(--accent); animation:pulse 1s infinite; }
+.live-badge.live .live-dot { background:#4ade80; box-shadow:0 0 6px #4ade80; animation:pulse 2s infinite; }
+.live-badge.static .live-dot { background:var(--muted2); }
+.live-time { opacity:0.7; font-size:10px; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.theme-label { font-size:10px; color:var(--muted2); letter-spacing:1.5px; text-transform:uppercase; }
+.theme-group { display:inline-flex; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:4px; gap:4px; }
+.theme-btn { border:none; background:transparent; color:var(--muted); font-size:12px; font-weight:500; padding:7px 16px; border-radius:9px; display:flex; align-items:center; gap:8px; transition:all 0.2s; }
+.theme-btn.on { background:rgba(47,214,195,0.1); color:var(--accent); font-weight:700; }
+.theme-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+.theme-btn.on .theme-dot { box-shadow:0 0 8px currentColor; }
+.board-header { padding:18px 20px 14px; max-width:1200px; margin:0 auto; display:flex; align-items:center; gap:14px; }
+.emblem { width:40px; height:40px; border-radius:10px; flex-shrink:0; background:rgba(47,214,195,0.09); border:1px solid rgba(47,214,195,0.25); display:flex; align-items:center; justify-content:center; }
+.emblem-dot { width:10px; height:10px; border-radius:50%; background:var(--accent); box-shadow:0 0 12px var(--accent); animation:emblem-pulse 2s ease-in-out infinite; }
+@keyframes emblem-pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.25);opacity:0.6} }
+.board-title { font-size:18px; font-weight:700; color:var(--text); letter-spacing:-0.3px; }
+.date-display { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; margin:0 20px 24px; max-width:1200px; margin-left:auto; margin-right:auto; }
+.date-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+.date-week { font-size:11px; font-weight:700; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:4px; }
+.date-month { font-size:14px; font-weight:700; color:var(--text); }
+.week-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+.day-card { background:transparent; border:1px solid rgba(44,49,50,0.4); border-radius:12px; padding:12px 8px; text-align:center; }
+.day-card.today { background:rgba(47,214,195,0.12); border-color:var(--accent); }
+.day-card.past { background:rgba(44,49,50,0.25); }
+.day-label { font-size:10px; font-weight:700; letter-spacing:1px; color:var(--muted2); text-transform:uppercase; margin-bottom:4px; }
+.day-card.today .day-label { color:var(--accent); }
+.day-num { font-size:20px; font-weight:800; color:var(--text); margin-bottom:4px; }
+.day-card.today .day-num { color:var(--accent); }
+.day-card.past .day-num { color:var(--muted); }
+.day-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); margin:4px auto 0; box-shadow:0 0 8px var(--accent); }
+.date-footer { margin-top:12px; font-size:10px; color:var(--muted2); display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; }
+.stats-bar { display:flex; gap:6px; margin:0 20px 24px; max-width:1200px; margin-left:auto; margin-right:auto; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:8px; }
+.stat-btn { flex:1; border:1px solid transparent; background:transparent; border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:14px; transition:all 0.2s; text-align:left; }
+.stat-btn.on { background:var(--cib-bg); }
+.stat-btn.on.isd { background:var(--isd-bg); }
+.stat-btn.on.frd { background:var(--frd-bg); }
+.stat-left { display:flex; flex-direction:column; gap:4px; flex:1; }
+.stat-row { display:flex; align-items:center; gap:8px; }
+.stat-dot { width:8px; height:8px; border-radius:50%; transition:all 0.2s; }
+.stat-btn.on .stat-dot { width:12px; height:12px; }
+.stat-label { font-size:13px; font-weight:500; color:var(--muted); transition:all 0.2s; }
+.stat-btn.on .stat-label { font-weight:700; }
+.stat-sub { font-size:10px; color:var(--muted2); letter-spacing:1px; text-transform:uppercase; }
+.stat-num { font-size:28px; font-weight:800; font-family:ui-monospace,"SF Mono",Menlo,monospace; line-height:1; color:var(--text); transition:all 0.2s; }
+.all-btn { width:60px; border:1px solid transparent; background:transparent; border-radius:12px; padding:14px 8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; transition:all 0.2s; }
+.all-btn .stat-dot { width:6px; height:6px; background:var(--muted2); }
+.all-btn .all-label { font-size:10px; font-weight:500; color:var(--muted2); letter-spacing:1px; }
+.all-btn.on { border-color:rgba(47,214,195,0.25); background:rgba(47,214,195,0.07); }
+.all-btn.on .stat-dot { background:var(--accent); }
+.all-btn.on .all-label { color:var(--accent); font-weight:700; }
+.board-content { padding:0 20px; max-width:1200px; margin:0 auto; }
+.section-head { font-size:13px; font-weight:700; letter-spacing:2px; color:var(--muted2); text-transform:uppercase; margin-bottom:14px; }
+.section-head span { font-weight:400; opacity:0.6; }
+.card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; margin-bottom:32px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; cursor:pointer; position:relative; overflow:hidden; transition:all 0.2s; }
+.card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; opacity:0.8; }
+.card.cib::before { background:var(--cib); }
+.card.isd::before { background:var(--isd); }
+.card.frd::before { background:var(--frd); }
+.card.fgd::before { background:var(--fgd); }
+.card.cib { border-color:rgba(47,214,195,0.25); }
+.card.isd { border-color:rgba(167,139,250,0.25); }
+.card.frd { border-color:rgba(244,123,123,0.25); }
+.card.fgd { border-color:rgba(74,222,128,0.25); }
+.card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+.card-sym { font-size:22px; font-weight:800; color:var(--text); }
+.card-signal { font-size:11px; font-weight:700; letter-spacing:1px; margin-top:2px; }
+.card.cib .card-signal { color:var(--cib); }
+.card.isd .card-signal { color:var(--isd); }
+.card.frd .card-signal { color:var(--frd); }
+.card.fgd .card-signal { color:var(--fgd); }
+.card-badge { font-size:11px; font-weight:700; padding:4px 10px; border-radius:8px; }
+.card.cib .card-badge { background:var(--cib-bg); border:1px solid rgba(47,214,195,0.31); color:var(--cib); }
+.card.isd .card-badge { background:var(--isd-bg); border:1px solid rgba(167,139,250,0.31); color:var(--isd); }
+.card.frd .card-badge { background:var(--frd-bg); border:1px solid rgba(244,123,123,0.31); color:var(--frd); }
+.card.fgd .card-badge { background:var(--fgd-bg); border:1px solid rgba(74,222,128,0.31); color:var(--fgd); }
+.range-labels { display:flex; justify-content:space-between; font-size:10px; color:var(--muted2); font-family:ui-monospace,"SF Mono",Menlo,monospace; margin-bottom:6px; }
+.range-track { position:relative; height:32px; background:rgba(44,49,50,0.4); border-radius:6px; margin-bottom:12px; }
+.range-band { position:absolute; top:4px; bottom:4px; background:rgba(255,255,255,0.08); border-radius:3px; }
+.range-marker { position:absolute; top:2px; bottom:2px; width:4px; border-radius:2px; transform:translateX(-50%); }
+.card.cib .range-marker { background:var(--cib); box-shadow:0 0 8px var(--cib); }
+.card.isd .range-marker { background:var(--isd); box-shadow:0 0 8px var(--isd); }
+.card.frd .range-marker { background:var(--frd); box-shadow:0 0 8px var(--frd); }
+.card.fgd .range-marker { background:var(--fgd); box-shadow:0 0 8px var(--fgd); }
+.close-row { display:flex; justify-content:space-between; align-items:baseline; }
+.close-label { font-size:10px; color:var(--muted2); letter-spacing:1px; }
+.close-price { font-size:20px; font-weight:800; font-family:ui-monospace,"SF Mono",Menlo,monospace; }
+.card.cib .close-price { color:var(--cib); }
+.card.isd .close-price { color:var(--isd); }
+.card.frd .close-price { color:var(--frd); }
+.card.fgd .close-price { color:var(--fgd); }
+.card-details { display:none; margin-top:14px; padding-top:12px; border-top:1px dashed var(--border); }
+.card.open .card-details { display:block; }
+.ohlc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:11px; }
+.ohlc-row { display:flex; justify-content:space-between; }
+.ohlc-label { color:var(--muted2); }
+.ohlc-value { color:var(--text); font-family:ui-monospace,"SF Mono",Menlo,monospace; font-weight:600; }
+.badges-row { margin-top:10px; font-size:10px; color:var(--muted2); }
+.loading-overlay { display:none; position:fixed; inset:0; z-index:100; background:rgba(20,22,23,0.95); backdrop-filter:blur(8px); flex-direction:column; align-items:center; justify-content:center; gap:20px; }
+.loading-overlay.show { display:flex; }
+.loading-spinner { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.loading-text { font-size:14px; color:var(--muted); }
+.loading-progress { font-size:12px; color:var(--muted2); font-family:ui-monospace,monospace; }
+@media(max-width:640px) { .stats-bar{flex-direction:column} .all-btn{width:100%;flex-direction:row;padding:10px 16px} .card-grid{grid-template-columns:1fr} .ctrl-row{gap:10px} .theme-btn{padding:7px 10px;font-size:11px} }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Lade Live-Daten...</div>
+  <div class="loading-progress" id="loadingProgress">0 / 14</div>
+</div>
+
+<header class="ctrl-header">
+  <div class="ctrl-inner">
+    <div class="ctrl-top">
+      <div class="ctrl-title">Signal Board</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="live-badge static" id="liveBadge">
+          <div class="live-dot"></div>
+          <span id="liveText">STATIC</span>
+          <span class="live-time" id="liveTime"></span>
+        </div>
+      </div>
+    </div>
+    <div class="ctrl-row">
+      <span class="theme-label">Theme</span>
+      <div class="theme-group">
+        <button class="theme-btn on" data-theme="dark-teal" onclick="setTheme('dark-teal')"><span class="theme-dot" style="background:#2fd6c3"></span> Dark Teal</button>
+        <button class="theme-btn" data-theme="midnight-navy" onclick="setTheme('midnight-navy')"><span class="theme-dot" style="background:#fbbf24"></span> Midnight Navy</button>
+        <button class="theme-btn" data-theme="mono-accent" onclick="setTheme('mono-accent')"><span class="theme-dot" style="background:#00ff88"></span> Mono+Accent</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="board-header">
+  <div class="emblem"><div class="emblem-dot"></div></div>
+  <h1 class="board-title">Signal Board</h1>
+</div>
+
+<div class="date-display" id="dateDisplay"></div>
+<div class="stats-bar" id="statsBar"></div>
+<div class="board-content" id="boardContent"></div>
+
+<script>
+// ===========================
+// THEMES
+// ===========================
+const THEMES = {
+  'dark-teal': {'--bg':'#141617','--card':'#1e2223','--border':'#2c3132','--text':'#f1f4f2','--muted':'#98a2a1','--muted2':'#6d7675','--accent':'#2fd6c3','--cib':'#2fd6c3','--cib-bg':'rgba(47,214,195,0.07)','--isd':'#a78bfa','--isd-bg':'rgba(167,139,250,0.08)','--frd':'#f47b7b','--frd-bg':'rgba(244,123,123,0.06)','--fgd':'#4ade80','--fgd-bg':'rgba(74,222,128,0.06)','--header-bg':'rgba(24,27,26,0.92)'},
+  'midnight-navy': {'--bg':'#0a0e1a','--card':'#111827','--border':'#1e293b','--text':'#e2e8f0','--muted':'#94a3b8','--muted2':'#64748b','--accent':'#fbbf24','--cib':'#fbbf24','--cib-bg':'rgba(251,191,36,0.08)','--isd':'#06b6d4','--isd-bg':'rgba(6,182,212,0.08)','--frd':'#f87171','--frd-bg':'rgba(248,113,113,0.06)','--fgd':'#34d399','--fgd-bg':'rgba(52,211,153,0.06)','--header-bg':'rgba(10,14,26,0.95)'},
+  'mono-accent': {'--bg':'#09090b','--card':'#18181b','--border':'#27272a','--text':'#fafafa','--muted':'#a1a1aa','--muted2':'#71717a','--accent':'#00ff88','--cib':'#00ff88','--cib-bg':'rgba(0,255,136,0.06)','--isd':'#c084fc','--isd-bg':'rgba(192,132,252,0.06)','--frd':'#ff4757','--frd-bg':'rgba(255,71,87,0.06)','--fgd':'#2ed573','--fgd-bg':'rgba(46,213,115,0.06)','--header-bg':'rgba(9,9,11,0.95)'}
+};
+
+// ===========================
+// INSTRUMENTE -- die massgebliche Liste lebt jetzt in python/generate_signals.py
+// (INSTRUMENTS dort); hier nur noch die Sektions-Reihenfolge fuers Rendering.
+// ===========================
+const SECTION_ORDER = ['Indizes','Metalle','Energie','Forex','Krypto'];
+
+// ===========================
+// STATE
+// ===========================
+let currentTheme = 'dark-teal';
+let currentFilter = 'all';
+let classifiedData = [];
+let isLive = false;
+let lastUpdate = null;
+
+// ===========================
+// CACHE
+// ===========================
+// Schluessel-Version bei jeder Aenderung am JSON-Schema oder an der Server-Klassifikation
+// (python/generate_signals.py) erhoehen -- sonst servieren bereits geoeffnete Browser bis
+// zum naechsten Rollover die alten Daten. v6: Umstellung von Live-Yahoo-Fetch + Client-
+// Klassifikation auf vorklassifiziertes JSON von /data/signals.json.
+const CACHE_KEY = 'signalboard_v6_json';
+const CACHE_MAX_AGE = 23 * 60 * 60 * 1000;
+// Der Cache wird an den HANDELSTAG gekoppelt, nicht an eine Stundenzahl: eine reine
+// 23-Stunden-Regel lieferte nach dem 18:00-NY-Rollover weiter die Signale des Vortags
+// (Board morgens um 7 geoeffnet, am Vortag um 8 -> innerhalb 23h -> alte Daten).
+// Die 23h bleiben zusaetzlich als Obergrenze bestehen.
+function tradingDayKeyOfNy(nyD) {
+  const t = new Date(nyD);
+  if (t.getHours() >= ROLLOVER_HOUR_NY) t.setDate(t.getDate() + 1);
+  t.setHours(0, 0, 0, 0);
+  return t.getTime();
+}
+function getCached() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    if (Date.now() - new Date(entry.timestamp).getTime() > CACHE_MAX_AGE) return null;
+    const cachedDay = tradingDayKeyOfNy(nyDateOf(new Date(entry.timestamp).getTime()));
+    if (cachedDay !== tradingDayKeyOfNy(nyNow())) return null;
+    return entry;
+  } catch { return null; }
+}
+function setCached(data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: new Date().toISOString(), data })); } catch {}
+}
+
+// ===========================
+// NY-ZEIT-HILFSFUNKTIONEN -- werden noch vom Cache (getCached/tradingDayKeyOfNy)
+// und von refreshIfNewTradingDay() gebraucht, auch ohne eigenen Live-Fetch mehr.
+// ===========================
+function nyDateOf(tsMs) {
+  return new Date(new Date(tsMs).toLocaleString('en-US', { timeZone: 'America/New_York' }));
+}
+function nyNow() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+}
+const ROLLOVER_HOUR_NY = 18; // Handelstag-Rollover (Globex-Wiedereroeffnung nach CME-Wartungspause)
+
+// ===========================
+// SIGNALE LADEN -- ersetzt den frueheren Live-Yahoo-Fetch samt Client-Klassifikation.
+// Die eigentliche Buendelung/Klassifikation passiert jetzt serverseitig in
+// python/generate_signals.py; hier wird nur noch das fertige JSON geladen.
+// ===========================
+async function loadSignals() {
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.classList.add('show');
+
+  const cached = getCached();
+  if (cached) {
+    classifiedData = cached.data.signals;
+    isLive = true;
+    lastUpdate = cached.data.updated;
+    shownTradingDay = currentTradingDayKey();
+    overlay.classList.remove('show');
+    updateLiveBadge();
+    render();
+    return;
+  }
+
+  try {
+    const res = await fetch('/data/signals.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    classifiedData = json.signals;
+    isLive = true;
+    lastUpdate = json.updated;
+    shownTradingDay = currentTradingDayKey();
+    setCached(json);
+    overlay.classList.remove('show');
+    updateLiveBadge();
+    render();
+  } catch (e) {
+    console.error('JSON fetch failed:', e);
+    try {
+      const fb = await fetch('/fallback.json').then(r => r.json());
+      classifiedData = fb.signals;
+      isLive = false;
+      lastUpdate = fb.updated;
+      overlay.classList.remove('show');
+      updateLiveBadge();
+      render();
+    } catch (e2) {
+      console.error('Fallback also failed:', e2);
+      overlay.classList.remove('show');
+    }
+  }
+}
+
+// ===========================
+// THEME
+// ===========================
+function setTheme(id) {
+  currentTheme = id;
+  const vars = THEMES[id];
+  const root = document.documentElement;
+  for (const [k,v] of Object.entries(vars)) root.style.setProperty(k, v);
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('on', b.dataset.theme === id));
+}
+
+// ===========================
+// FILTER
+// ===========================
+function setFilter(f) {
+  currentFilter = currentFilter === f ? 'all' : f;
+  render();
+}
+
+// ===========================
+// RENDER
+// ===========================
+function fmt(v, d) { return v.toLocaleString('de-DE', { minimumFractionDigits:d, maximumFractionDigits:d }); }
+
+function updateLiveBadge() {
+  const badge = document.getElementById('liveBadge');
+  const text = document.getElementById('liveText');
+  const time = document.getElementById('liveTime');
+  badge.className = 'live-badge ' + (isLive ? 'live' : 'static');
+  text.textContent = isLive ? 'LIVE' : 'STATIC';
+  if (lastUpdate) {
+    const d = new Date(lastUpdate);
+    time.textContent = d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}) + ' ' + d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  }
+}
+
+function getWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+function renderDateDisplay() {
+  const display = document.getElementById('dateDisplay');
+  if (!display) return;
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  const weekNum = getWeekNumber(today);
+  const weekdays = ['MO','DI','MI','DO','FR'];
+
+  let html = `
+    <div class="date-header">
+      <div>
+        <div class="date-week">Kalenderwoche ${weekNum}</div>
+        <div class="date-month">${today.toLocaleDateString('de-DE', { month:'long', year:'numeric' })}</div>
+      </div>
+    </div>
+    <div class="week-grid">`;
+  for (let i = 0; i < 5; i++) {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + i);
+    const isToday = date.toDateString() === today.toDateString();
+    const isPast = date < today && !isToday;
+    html += `
+      <div class="day-card ${isToday?'today':''} ${isPast?'past':''}">
+        <div class="day-label">${weekdays[i]}</div>
+        <div class="day-num">${date.getDate()}</div>
+        ${isToday ? '<div class="day-dot"></div>' : ''}
+      </div>`;
+  }
+  html += `
+    </div>
+    <div class="date-footer">
+      <span>● Heute</span>
+      <span>Signale basieren auf Schlusskurs 16:59 NY des Vortags</span>
+    </div>`;
+  display.innerHTML = html;
+}
+
+function render() {
+  renderDateDisplay();
+
+  const allData = classifiedData.filter(i => i.cls.cat !== 'NONE');
+  const nC = allData.filter(i => i.cls.cat === 'CIB').length;
+  const nI = allData.filter(i => i.cls.cat === 'ISD').length;
+  const nF = allData.filter(i => i.cls.cat === 'FRD' || i.cls.cat === 'FGD').length;
+
+  const statsBar = document.getElementById('statsBar');
+  const stats = [
+    { key:'CIB', label:'CIB', sub:'Breakouts', n:nC, cls:'' },
+    { key:'ISD', label:'ISD', sub:'Inside Days', n:nI, cls:'isd' },
+    { key:'FRD', label:'FRD/FGD', sub:'Failed Reversals', n:nF, cls:'frd' },
+  ];
+  statsBar.innerHTML = stats.map(s => `
+    <button class="stat-btn ${s.cls} ${currentFilter===s.key?'on':''}" onclick="setFilter('${s.key}')">
+      <div class="stat-left">
+        <div class="stat-row">
+          <div class="stat-dot" style="background:var(--${s.key==='FRD'?'frd':s.key.toLowerCase()})"></div>
+          <span class="stat-label" style="${currentFilter===s.key?'color:var(--'+(s.key==='FRD'?'frd':s.key.toLowerCase())+')':''}">${s.label}</span>
+        </div>
+        <span class="stat-sub">${s.sub}</span>
+      </div>
+      <div class="stat-num" style="${currentFilter===s.key?'color:var(--'+(s.key==='FRD'?'frd':s.key.toLowerCase())+')':''}">${s.n}</div>
+    </button>
+  `).join('') + `
+    <button class="all-btn ${currentFilter==='all'?'on':''}" onclick="setFilter('all')">
+      <div class="stat-dot"></div><span class="all-label">ALL</span>
+    </button>`;
+
+  const filtered = allData.filter(i => {
+    if (currentFilter === 'all') return true;
+    if (currentFilter === 'FRD') return i.cls.cat === 'FRD' || i.cls.cat === 'FGD';
+    return i.cls.cat === currentFilter;
+  });
+
+  const secs = SECTION_ORDER.filter(sec => filtered.some(i => i.sec === sec));
+  const content = document.getElementById('boardContent');
+  if (!filtered.length) {
+    content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted2);font-family:monospace">Keine Signale in dieser Kategorie.</div>';
+    return;
+  }
+
+  content.innerHTML = secs.map(sec => {
+    const items = filtered.filter(i => i.sec === sec);
+    return `
+      <div style="margin-bottom:32px">
+        <div class="section-head">${sec.toUpperCase()} <span>· ${items.length}</span></div>
+        <div class="card-grid">
+          ${items.map(item => {
+            const c = item.cls;
+            const catClass = c.cat.toLowerCase();
+            const lo = Math.min(item.pL, item.l);
+            const hi = Math.max(item.pH, item.h);
+            const range = hi - lo || 1;
+            const closePos = ((item.c - lo) / range * 100).toFixed(1);
+            const bandLeft = ((item.pL - lo) / range * 100).toFixed(1);
+            const bandWidth = ((item.pH - item.pL) / range * 100).toFixed(1);
+            const signalText = c.cat === 'CIB' ? `CIB ${c.dir>0?'▲':'▼'}` : c.cat;
+            const badgeText = c.cat === 'CIB' ? (c.badges.length ? c.badges.slice(0,2).join(' ') : 'BREAK') : c.cat === 'ISD' ? 'INSIDE' : 'TRAP';
+            return `
+              <div class="card ${catClass}" onclick="this.classList.toggle('open')">
+                <div class="card-top">
+                  <div><div class="card-sym">${item.sym}</div><div class="card-signal">${signalText}</div></div>
+                  <div class="card-badge">${badgeText}</div>
+                </div>
+                <div class="range-labels"><span>${fmt(item.pL, item.dec)}</span><span>${fmt(item.pH, item.dec)}</span></div>
+                <div class="range-track">
+                  <div class="range-band" style="left:${bandLeft}%;width:${bandWidth}%"></div>
+                  <div class="range-marker" style="left:${closePos}%"></div>
+                </div>
+                <div class="close-row"><span class="close-label">CLOSE 16:59</span><span class="close-price">${fmt(item.c, item.dec)}</span></div>
+                <div class="card-details">
+                  <div class="ohlc-grid">
+                    <div class="ohlc-row"><span class="ohlc-label">Open</span><span class="ohlc-value">${fmt(item.o, item.dec)}</span></div>
+                    <div class="ohlc-row"><span class="ohlc-label">High</span><span class="ohlc-value">${fmt(item.h, item.dec)}</span></div>
+                    <div class="ohlc-row"><span class="ohlc-label">Low</span><span class="ohlc-value">${fmt(item.l, item.dec)}</span></div>
+                    <div class="ohlc-row"><span class="ohlc-label">Close</span><span class="ohlc-value">${fmt(item.c, item.dec)}</span></div>
+                  </div>
+                  ${c.badges.length ? `<div class="badges-row">● ${c.badges.join(' · ')}</div>` : ''}
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ===========================
+// RUECKKEHR IN DEN VORDERGRUND
+// ===========================
+// Das Board wird vor allem am Handy genutzt, vom Startbildschirm aus. Dort wird die Seite oft
+// aus dem Ruhezustand geholt statt neu geladen -- dann liefe sie mit dem Stand von gestern
+// weiter, ohne Hinweis. Deshalb: bei jeder Rueckkehr in den Vordergrund pruefen, ob inzwischen
+// ein neuer Handelstag begonnen hat (18:00-NY-Rollover), und die Daten nur dann nachladen.
+// Kein Timer, keine Abfrage im Hintergrund -- innerhalb desselben Handelstags aendert sich an
+// einer Tagesschluss-Bewertung ohnehin nichts.
+let shownTradingDay = null;
+
+function currentTradingDayKey() {
+  try { return tradingDayKeyOfNy(nyNow()); } catch { return null; }
+}
+
+async function refreshIfNewTradingDay() {
+  const now = currentTradingDayKey();
+  if (now === null || now === shownTradingDay) return;
+  await loadSignals();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshIfNewTradingDay();
+});
+// pageshow mit persisted=true = Seite kam aus dem Vor-/Zurueck-Zwischenspeicher des Browsers;
+// visibilitychange feuert in diesem Fall nicht zuverlaessig.
+window.addEventListener('pageshow', e => { if (e.persisted) refreshIfNewTradingDay(); });
+
+// ===========================
+// INIT
+// ===========================
+setTheme('dark-teal');
+loadSignals();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch(err => console.error('SW-Registrierung fehlgeschlagen:', err));
+  });
+}
+</script>
+</body>
+</html>
