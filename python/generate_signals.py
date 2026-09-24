@@ -274,6 +274,13 @@ def compute_instrument(inst, now_ny):
     daily_closes = None
     if inst["ticker"] in DAILY_CLOSE_OVERRIDE_TICKERS:
         daily_closes = fetch_daily_closes(inst["ticker"])
+        if not daily_closes:
+            # fetch_daily_closes() faengt eigene Fehler ab und gibt dann ein
+            # leeres Dict zurueck (Robustheit) -- das darf aber nicht lautlos
+            # passieren, sonst faellt der DAX-Schlusskurs-Fix unbemerkt auf
+            # die ungenaue Stundenbalken-Variante zurueck.
+            print(f"WARNUNG: Tagesschluss-Abgleich fuer {inst['ticker']} nicht verfuegbar, "
+                  f"verwende Stundenbalken-Fallback fuer den Schlusskurs.")
     days = bucket_hourly(bars, daily_closes)
 
     if inst["ticker"] == "BTC-USD":
@@ -492,6 +499,18 @@ def main():
     check_rollover(now_ny, args.force)
 
     payload, errors = build_signals(now_ny)
+
+    if not payload["signals"]:
+        # Nichts schreiben, wenn KEIN einziges Instrument erfolgreich war
+        # (z.B. kompletter Yahoo-Ausfall) -- sonst wuerde eine leere
+        # signals.json das zuletzt funktionierende Board committen und
+        # ueberschreiben, obwohl der Lauf komplett fehlgeschlagen ist. Die
+        # alte, zuletzt gute Datei bleibt so unangetastet liegen.
+        print("FEHLER: Kein einziges Instrument erfolgreich -- signals.json NICHT ueberschrieben.")
+        for e in errors:
+            print(f"  - {e}")
+        raise SystemExit(1)
+
     write_signals_file(payload)
     print(f"OK: {len(payload['signals'])} von {len(INSTRUMENTS)} Instrumenten nach {OUTPUT_PATH} geschrieben.")
     if errors:
