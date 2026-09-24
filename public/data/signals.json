@@ -1,6 +1,6 @@
 {
-  "updated": "2026-09-24T15:57:47+02:00",
-  "tradingDay": "2026-09-24",
+  "updated": "2026-09-24T16:39:10+02:00",
+  "tradingDay": "2026-09-23",
   "kw": 39,
   "signals": [
     {
@@ -418,19 +418,15 @@
       "pmL": 62210.140625,
       "yesterdayDir": null,
       "cls": {
-        "cat": "CIB",
-        "dir": -1,
+        "cat": "OUTSIDE",
+        "dir": 0,
         "touched": [
           "PDH",
           "PDL",
           "PWH",
           "PMH"
         ],
-        "badges": [
-          "LCOW",
-          "PWH",
-          "PMH"
-        ]
+        "badges": []
       }
     }
   ]

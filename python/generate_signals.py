@@ -19,6 +19,7 @@ andere pruefen, beide muessen exakt zusammenpassen.
 import argparse
 import json
 import time
+from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -322,6 +323,7 @@ def compute_instrument(inst, now_ny):
 
     return {
         "sym": inst["sym"], "sec": inst["sec"], "dec": inst["dec"],
+        "tradingDay": today_day,
         "o": today["o"], "h": today["h"], "l": today["l"], "c": today["c"],
         "pH": yest["h"], "pL": yest["l"],
         "pwH": max((b["h"] for b in pw_bars), default=None),
@@ -409,13 +411,13 @@ def classify(item):
 # GESAMTLAUF
 # ===========================
 def build_signals(now_ny):
-    trading_day = trading_day_of(now_ny)
-
     signals = []
     errors = []
+    trading_days_seen = []
     for inst in INSTRUMENTS:
         try:
             item = compute_instrument(inst, now_ny)
+            trading_days_seen.append(item["tradingDay"])
             cls = classify(item)
             if cls["cat"] == "NONE":
                 # Level beruehrt, aber kein Pump/Dump-Vorlauf -- wird laut
@@ -434,6 +436,17 @@ def build_signals(now_ny):
         except Exception as e:  # noqa: BLE001 -- ein fehlgeschlagenes Instrument darf den Lauf nicht abbrechen
             errors.append(f"{inst['sym']}: {e}")
             print(f"WARNUNG: {inst['sym']} uebersprungen ({e})")
+
+    # tradingDay soll den Tag der tatsaechlich angezeigten Daten benennen
+    # (den letzten ABGESCHLOSSENEN Handelstag), nicht einfach das heutige
+    # Kalenderdatum der Wanduhr -- sonst ist das Label irrefuehrend, wenn der
+    # laufende Tag (wie bei jedem normalen Lauf vor 18:00 NY) verworfen wurde.
+    # Mehrheitswert ueber alle erfolgreichen Instrumente, Fallback auf die
+    # Wanduhr nur falls kein einziges Instrument erfolgreich war.
+    if trading_days_seen:
+        trading_day = Counter(trading_days_seen).most_common(1)[0][0]
+    else:
+        trading_day = trading_day_of(now_ny)
 
     payload = {
         "updated": datetime.now(BERLIN).isoformat(timespec="seconds"),
