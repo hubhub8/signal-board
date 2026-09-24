@@ -16,6 +16,7 @@
   --isd:#a78bfa; --isd-bg:rgba(167,139,250,0.08);
   --frd:#f47b7b; --frd-bg:rgba(244,123,123,0.06);
   --fgd:#4ade80; --fgd-bg:rgba(74,222,128,0.06);
+  --outside:#fbbf24; --outside-bg:rgba(251,191,36,0.07);
   --header-bg:rgba(24,27,26,0.92);
 }
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -69,6 +70,7 @@ button { font-family:inherit; cursor:pointer; }
 .stat-btn.on { background:var(--cib-bg); }
 .stat-btn.on.isd { background:var(--isd-bg); }
 .stat-btn.on.frd { background:var(--frd-bg); }
+.stat-btn.on.outside { background:var(--outside-bg); }
 .stat-left { display:flex; flex-direction:column; gap:4px; flex:1; }
 .stat-row { display:flex; align-items:center; gap:8px; }
 .stat-dot { width:8px; height:8px; border-radius:50%; transition:all 0.2s; }
@@ -93,10 +95,12 @@ button { font-family:inherit; cursor:pointer; }
 .card.isd::before { background:var(--isd); }
 .card.frd::before { background:var(--frd); }
 .card.fgd::before { background:var(--fgd); }
+.card.outside::before { background:var(--outside); }
 .card.cib { border-color:rgba(47,214,195,0.25); }
 .card.isd { border-color:rgba(167,139,250,0.25); }
 .card.frd { border-color:rgba(244,123,123,0.25); }
 .card.fgd { border-color:rgba(74,222,128,0.25); }
+.card.outside { border-color:rgba(251,191,36,0.3); }
 .card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
 .card-sym { font-size:22px; font-weight:800; color:var(--text); }
 .card-signal { font-size:11px; font-weight:700; letter-spacing:1px; margin-top:2px; }
@@ -104,11 +108,13 @@ button { font-family:inherit; cursor:pointer; }
 .card.isd .card-signal { color:var(--isd); }
 .card.frd .card-signal { color:var(--frd); }
 .card.fgd .card-signal { color:var(--fgd); }
+.card.outside .card-signal { color:var(--outside); }
 .card-badge { font-size:11px; font-weight:700; padding:4px 10px; border-radius:8px; }
 .card.cib .card-badge { background:var(--cib-bg); border:1px solid rgba(47,214,195,0.31); color:var(--cib); }
 .card.isd .card-badge { background:var(--isd-bg); border:1px solid rgba(167,139,250,0.31); color:var(--isd); }
 .card.frd .card-badge { background:var(--frd-bg); border:1px solid rgba(244,123,123,0.31); color:var(--frd); }
 .card.fgd .card-badge { background:var(--fgd-bg); border:1px solid rgba(74,222,128,0.31); color:var(--fgd); }
+.card.outside .card-badge { background:var(--outside-bg); border:1px solid rgba(251,191,36,0.35); color:var(--outside); }
 .range-labels { display:flex; justify-content:space-between; font-size:10px; color:var(--muted2); font-family:ui-monospace,"SF Mono",Menlo,monospace; margin-bottom:6px; }
 .range-track { position:relative; height:32px; background:rgba(44,49,50,0.4); border-radius:6px; margin-bottom:12px; }
 .range-band { position:absolute; top:4px; bottom:4px; background:rgba(255,255,255,0.08); border-radius:3px; }
@@ -117,6 +123,7 @@ button { font-family:inherit; cursor:pointer; }
 .card.isd .range-marker { background:var(--isd); box-shadow:0 0 8px var(--isd); }
 .card.frd .range-marker { background:var(--frd); box-shadow:0 0 8px var(--frd); }
 .card.fgd .range-marker { background:var(--fgd); box-shadow:0 0 8px var(--fgd); }
+.card.outside .range-marker { background:var(--outside); box-shadow:0 0 8px var(--outside); }
 .close-row { display:flex; justify-content:space-between; align-items:baseline; }
 .close-label { font-size:10px; color:var(--muted2); letter-spacing:1px; }
 .close-price { font-size:20px; font-weight:800; font-family:ui-monospace,"SF Mono",Menlo,monospace; }
@@ -124,6 +131,7 @@ button { font-family:inherit; cursor:pointer; }
 .card.isd .close-price { color:var(--isd); }
 .card.frd .close-price { color:var(--frd); }
 .card.fgd .close-price { color:var(--fgd); }
+.card.outside .close-price { color:var(--outside); }
 .card-details { display:none; margin-top:14px; padding-top:12px; border-top:1px dashed var(--border); }
 .card.open .card-details { display:block; }
 .ohlc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:11px; }
@@ -188,8 +196,8 @@ button { font-family:inherit; cursor:pointer; }
 // THEMES
 // ===========================
 const THEMES = {
-  'dark-teal': {'--bg':'#141617','--card':'#1e2223','--border':'#2c3132','--text':'#f1f4f2','--muted':'#98a2a1','--muted2':'#6d7675','--accent':'#2fd6c3','--cib':'#2fd6c3','--cib-bg':'rgba(47,214,195,0.07)','--isd':'#a78bfa','--isd-bg':'rgba(167,139,250,0.08)','--frd':'#f47b7b','--frd-bg':'rgba(244,123,123,0.06)','--fgd':'#4ade80','--fgd-bg':'rgba(74,222,128,0.06)','--header-bg':'rgba(24,27,26,0.92)'},
-  'light-inkpaper': {'--bg':'#fbfbfa','--card':'#ffffff','--border':'#c9c2b3','--text':'#16140f','--muted':'#55503f','--muted2':'#8a8470','--accent':'#0f766e','--cib':'#0f766e','--cib-bg':'rgba(15,118,110,0.09)','--isd':'#6d28d9','--isd-bg':'rgba(109,40,217,0.08)','--frd':'#b91c1c','--frd-bg':'rgba(185,28,28,0.06)','--fgd':'#15803d','--fgd-bg':'rgba(21,128,61,0.06)','--header-bg':'rgba(251,251,250,0.92)'}
+  'dark-teal': {'--bg':'#141617','--card':'#1e2223','--border':'#2c3132','--text':'#f1f4f2','--muted':'#98a2a1','--muted2':'#6d7675','--accent':'#2fd6c3','--cib':'#2fd6c3','--cib-bg':'rgba(47,214,195,0.07)','--isd':'#a78bfa','--isd-bg':'rgba(167,139,250,0.08)','--frd':'#f47b7b','--frd-bg':'rgba(244,123,123,0.06)','--fgd':'#4ade80','--fgd-bg':'rgba(74,222,128,0.06)','--outside':'#fbbf24','--outside-bg':'rgba(251,191,36,0.07)','--header-bg':'rgba(24,27,26,0.92)'},
+  'light-inkpaper': {'--bg':'#fbfbfa','--card':'#ffffff','--border':'#c9c2b3','--text':'#16140f','--muted':'#55503f','--muted2':'#8a8470','--accent':'#0f766e','--cib':'#0f766e','--cib-bg':'rgba(15,118,110,0.09)','--isd':'#6d28d9','--isd-bg':'rgba(109,40,217,0.08)','--frd':'#b91c1c','--frd-bg':'rgba(185,28,28,0.06)','--fgd':'#15803d','--fgd-bg':'rgba(21,128,61,0.06)','--outside':'#b45309','--outside-bg':'rgba(180,83,9,0.08)','--header-bg':'rgba(251,251,250,0.92)'}
 };
 
 // ===========================
@@ -392,12 +400,14 @@ function render() {
   const nC = allData.filter(i => i.cls.cat === 'CIB').length;
   const nI = allData.filter(i => i.cls.cat === 'ISD').length;
   const nF = allData.filter(i => i.cls.cat === 'FRD' || i.cls.cat === 'FGD').length;
+  const nO = allData.filter(i => i.cls.cat === 'OUTSIDE').length;
 
   const statsBar = document.getElementById('statsBar');
   const stats = [
     { key:'CIB', label:'CIB', sub:'Breakouts', n:nC, cls:'' },
     { key:'ISD', label:'ISD', sub:'Inside Days', n:nI, cls:'isd' },
     { key:'FRD', label:'FRD/FGD', sub:'Failed Reversals', n:nF, cls:'frd' },
+    { key:'OUTSIDE', label:'OUTSIDE', sub:'Outside Days', n:nO, cls:'outside' },
   ];
   statsBar.innerHTML = stats.map(s => `
     <button class="stat-btn ${s.cls} ${currentFilter===s.key?'on':''}" onclick="setFilter('${s.key}')">
@@ -444,7 +454,7 @@ function render() {
             const bandLeft = ((item.pL - lo) / range * 100).toFixed(1);
             const bandWidth = ((item.pH - item.pL) / range * 100).toFixed(1);
             const signalText = c.cat === 'CIB' ? `CIB ${c.dir>0?'▲':'▼'}` : c.cat;
-            const badgeText = c.cat === 'CIB' ? (c.badges.length ? c.badges.slice(0,2).join(' ') : 'BREAK') : c.cat === 'ISD' ? 'INSIDE' : 'TRAP';
+            const badgeText = c.cat === 'CIB' ? (c.badges.length ? c.badges.slice(0,2).join(' ') : 'BREAK') : c.cat === 'ISD' ? 'INSIDE' : c.cat === 'OUTSIDE' ? 'RANGE' : 'TRAP';
             return `
               <div class="card ${catClass}" onclick="this.classList.toggle('open')">
                 <div class="card-top">

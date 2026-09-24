@@ -337,10 +337,12 @@ def compute_instrument(inst, now_ny):
 # KLASSIFIKATION (1:1 aus classify() in signal-board.html)
 # ===========================
 def classify(item):
-    """CIB: Close jenseits PDH/PDL. ISD: Close in Vortagesspanne UND kein
-    Level beruehrt. FRD/FGD: Level beruehrt, Close zurueck in der Spanne,
-    UND Vortag war selbst Pump(FRD)/Dump(FGD). Level beruehrt + Pump/Dump-
-    Vorlauf fehlt => cat='NONE' (wird nicht ausgegeben, NIE Fallback auf ISD)."""
+    """OUTSIDE: Hoch UND Tief beide jenseits des Vortags (hat Vorrang vor
+    allem anderen, keine Richtung). CIB: Close jenseits PDH/PDL (und NICHT
+    Outside Day). ISD: Close in Vortagesspanne UND kein Level beruehrt.
+    FRD/FGD: Level beruehrt, Close zurueck in der Spanne, UND Vortag war
+    selbst Pump(FRD)/Dump(FGD). Level beruehrt + Pump/Dump-Vorlauf fehlt =>
+    cat='NONE' (wird nicht ausgegeben, NIE Fallback auf ISD)."""
     touched = []
     if item["h"] > item["pH"]:
         touched.append("PDH")
@@ -356,7 +358,13 @@ def classify(item):
         touched.append("PML")
 
     direction = 0
-    if item["c"] > item["pH"]:
+    if "PDH" in touched and "PDL" in touched:
+        # Outside Day: heutiges Hoch UND Tief liegen beide jenseits des
+        # Vortags -- eigene Kategorie, unabhaengig davon wo der Schluss
+        # landet, hat Vorrang vor CIB (auch ein klarer Ausbruch bleibt
+        # OUTSIDE, wenn beide Seiten getriggert wurden). Keine Richtung.
+        cat = "OUTSIDE"
+    elif item["c"] > item["pH"]:
         cat, direction = "CIB", 1
     elif item["c"] < item["pL"]:
         cat, direction = "CIB", -1
