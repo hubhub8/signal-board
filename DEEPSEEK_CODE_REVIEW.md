@@ -1,5 +1,11 @@
 # Code-Review-Auftrag für DeepSeek — python/generate_signals.py
 
+**Stand:** Version 2 (25.09.2026) — ersetzt eine frühere Fassung dieses Dokuments.
+Falls du diese Datei schon einmal gesehen hast: der Code unten ist aktueller,
+zwei Punkte aus der letzten Runde wurden bereits behoben (siehe Abschnitt 4c),
+und ein Punkt aus der letzten Runde wurde nach empirischer Prüfung **verworfen**
+(die dort behauptete UTC-Annahme war falsch — siehe Abschnitt 4b).
+
 **Kontext:** Dieses Dokument ist eigenständig lesbar — du hast keinen Zugriff auf das
 Projekt selbst, nur auf das, was hier steht. Bitte den Code unten auf
 Korrektheitsfehler, Edge Cases und Logikfehler prüfen (keine Stilfragen, keine
@@ -26,115 +32,106 @@ HTML/JS-Frontend (nicht Teil dieses Reviews) rendert sie nur noch.
   dieser Minute), unabhängig vom Instrumententyp.
 - Diese Konvention ist historisch hart erarbeitet: eine frühere Version dieses
   Projekts verglich rohe Yahoo-Tagesbalken direkt zwischen verschiedenen
-  Instrumenten und bekam an manchen Tagen widersprüchliche Signale, weil
-  Yahoos natives Tagesbalken-Ende nicht bei allen Instrumenten gleich liegt.
-  Seitdem wird **grundsätzlich selbst aus Stundenkerzen gebündelt**, nie der
-  native Tagesbalken direkt vertraut — **mit einer bewussten, eng gefassten
-  Ausnahme** (siehe Abschnitt 4, `DAILY_CLOSE_OVERRIDE_TICKERS`).
+  Instrumenten und bekam an manchen Tagen widersprüchliche Signale. Seitdem
+  wird **grundsätzlich selbst aus Stundenkerzen gebündelt**, nie der native
+  Tagesbalken direkt vertraut — **mit einer bewussten, eng gefassten
+  Ausnahme** (siehe Abschnitt 4a, `DAILY_CLOSE_OVERRIDE_TICKERS`).
 
-## 3. Klassifikationsregeln (klassisches Verhalten, unverändert)
+## 3. Klassifikationsregeln
 
 Pro Instrument werden verglichen: heutiges Open/High/Low/Close (`o,h,l,c`)
 gegen gestriges High/Low (`pH,pL`), sowie optional Vorwochen-High/Low
 (`pwH,pwL`) und Vormonats-High/Low (`pmH,pmL`).
 
-- **CIB** (Close Is Beyond): `c > pH` → CIB ▲, `c < pL` → CIB ▼.
-- **ISD** (Inside Day): `c` liegt in `[pL, pH]` UND kein Level wurde berührt
-  (weder PDH/PDL noch PWH/PWL/PMH/PML).
-- **FRD/FGD**: mindestens ein Level wurde berührt (z.B. `h > pH` oder
-  `l < pL`), aber der Schluss kehrt zurück in `[pL, pH]`. Kandidat ist FRD
-  wenn `c < o`, sonst FGD. Der Kandidat wird nur bestätigt, wenn der
-  **Vortag selbst** ein "up"-Tag war (für FRD) bzw. ein "down"-Tag (für FGD)
-  — "up"/"down" eines Tages bedeutet: dessen eigener Schluss lag über dem
-  High des Tages davor (up) bzw. unter dessen Low (down). Fehlt dieser
-  Vorlauf, ist das Ergebnis `NONE` und wird NICHT ausgegeben (kein
-  Fallback auf ISD).
+- **OUTSIDE**: `h > pH` UND `l < pL` gleichzeitig (beide Vortagesgrenzen
+  getriggert) — eigene Kategorie, **hat Vorrang vor allem anderen**
+  (auch vor CIB, selbst wenn der Schluss klar jenseits eines Levels liegt),
+  keine Richtung, keine Badges. Bewusst so von der Auftraggeberin festgelegt.
+- **CIB** (Close Is Beyond, nur wenn NICHT Outside Day): `c > pH` → CIB ▲,
+  `c < pL` → CIB ▼.
+- **ISD** (Inside Day): `c` liegt in `[pL, pH]` UND kein Level wurde berührt.
+- **FRD/FGD**: mindestens ein Level wurde berührt, aber der Schluss kehrt
+  zurück in `[pL, pH]`. Kandidat ist FRD wenn `c < o`, sonst FGD. Bestätigt
+  wird der Kandidat nur, wenn der **Vortag selbst** ein "up"-Tag war (für FRD)
+  bzw. "down"-Tag (für FGD) — "up"/"down" eines Tages bedeutet: dessen
+  eigener Schluss lag über dem High des Tages davor (up) bzw. unter dessen
+  Low (down). Fehlt dieser Vorlauf, ist das Ergebnis `NONE` und wird NICHT
+  ausgegeben.
 - **Badges** (nur für CIB-Tage): HCOM/LCOM (höchster/tiefster CIB-Schluss des
   Monats), HCOW/LCOW (der Woche), plus PWH/PWL/PMH/PML falls die jeweilige
-  Vorwochen-/Vormonatsgrenze auch berührt wurde. `wk`/`mo` sind Listen der
-  Schlusskurse aller Tage der laufenden Woche/des laufenden Monats **die
-  selbst ein CIB-Tag waren** (dir != null), vor dem heutigen Tag.
+  Vorwochen-/Vormonatsgrenze auch berührt wurde.
 
-## 4. NEU (heute in dieser Session hinzugefügt) — bitte besonders kritisch prüfen
+## 4. Bekannter Stand zu den drei kritischen Punkten aus der letzten Runde
 
-### 4a. OUTSIDE als eigene Kategorie
+### 4a. OUTSIDE-Priorität und Datenverlust der Richtung
 
-Neue Regel, von der Auftraggeberin heute explizit so festgelegt: Wenn sowohl
-`h > pH` ALS AUCH `l < pL` (beide Vortagesgrenzen wurden getriggert — ein
-"Outside Day"), ist die Kategorie **immer** `OUTSIDE`, unabhängig davon wo der
-Schluss landet — das hat **Vorrang vor CIB**, auch wenn der Schluss klar
-jenseits eines Levels liegt. OUTSIDE hat keine Richtung (`dir` bleibt 0) und
-bekommt keine Badges (Badges sind weiterhin CIB-exklusiv).
+War in der letzten Runde als "Diskussionspunkt" markiert. **Geklärt:**
+bewusste Produktentscheidung der Auftraggeberin, mit einem echten Beispiel
+verifiziert (ein Instrument, das klar unterhalb der Vortagesspanne schloss,
+aber vorher auch das Vortageshoch getriggert hatte, wurde von ihr explizit
+als "Outside Day" bestätigt, nicht als CIB). Kein offener Punkt mehr.
 
-**Konkret zu prüfen:** Ist diese Priorisierung (OUTSIDE übersteuert CIB
-komplett) in sich konsistent? Gibt es einen Fall, in dem das zu einem
-kontraintuitiven Ergebnis führt (z.B. ein Instrument, das klar und deutlich
-nach oben ausbricht, aber trotzdem nur als neutrales OUTSIDE ohne Richtung
-gezeigt wird, obwohl der Ausbruch der eigentlich relevante Fakt wäre)?
+### 4b. DAILY_CLOSE_OVERRIDE_TICKERS — Datums-Matching
 
-### 4b. DAILY_CLOSE_OVERRIDE_TICKERS (DAX-Schlusskurs-Fix)
+In der letzten Runde wurde behauptet, `ts.date()` in `fetch_hour_bars()`
+liefere das **UTC-Datum** der Stundenbalken, was bei Instrumenten mit später
+Session zu falschem Datums-Matching führen könnte. **Das wurde direkt gegen
+die echte Bibliothek getestet und widerlegt:**
 
-Konkret gefundener Bug heute: `^GDAXI` (DAX) handelt an der Xetra, deren
-Sitzung (ca. 09:00–17:30 CET = ca. 03:00–11:30 EDT) lange vor 16:59 NY endet.
-Yahoos **Stundenbalken** für `^GDAXI` enden mit dem letzten Balken der
-regulären fortlaufenden Sitzung und erfassen die tatsächliche
-**Schlussauktion** (die den amtlichen Tagesschluss bestimmt) NICHT. Das ergab
-am 23.09.2026 einen um 16 Punkte falschen Schlusskurs (25426,55 aus dem
-Stundenbalken-Fallback statt echtem Xetra-Schluss 25410,63 aus Yahoos eigenem
-Tagesbalken) — in diesem konkreten Fall genug, um die Kategorie zu kippen
-(fälschlich `NONE`/ausgeblendet statt korrekt `CIB`).
+```python
+>>> df.index.tz
+Europe/Berlin
+>>> df.index[-3:]
+DatetimeIndex(['2026-09-24 14:00:00+02:00', '2026-09-24 15:00:00+02:00',
+               '2026-09-24 16:00:00+02:00'], dtype='datetime64[ns, Europe/Berlin]')
+```
 
-**Fix:** Für Ticker in `DAILY_CLOSE_OVERRIDE_TICKERS` (aktuell nur `^GDAXI`)
-wird zusätzlich ein `interval=1d`-Abruf gemacht, und dessen `Close`-Wert
-ersetzt NUR den Schlusskurs (nicht High/Low/Open, nicht die
-Handelstag-Zuordnung) — siehe `fetch_daily_closes()` und der Override-Block
-in `bucket_hourly()`.
+`yfinance-cache` liefert die Stundenbalken für `^GDAXI` bereits tz-aware in
+der **Börsenzeitzone** (Europe/Berlin), nicht UTC. `local_date = ts.date()`
+(berechnet VOR der Umrechnung nach NY) ist also von Anfang an korrekt. Bitte
+diese Prämisse bei einer erneuten Prüfung nicht wiederholen, sondern als
+verifiziert behandeln.
 
-**Konkret zu prüfen:**
-- Ist der Date-Matching-Mechanismus robust? `bucket_hourly()` sammelt pro
-  Handelstag-Bucket die Menge der `local_date`-Werte (das Datum JEDES
-  Stundenbalkens in seiner ORIGINALEN Börsenzeitzone, siehe `local_date` in
-  `fetch_hour_bars()`) und übernimmt den Override nur, wenn diese Menge genau
-  EIN Datum enthält (`if len(local_dates) == 1`). Ist das die richtige
-  Absicherung, oder gibt es einen Fall, in dem das falsch matcht oder zu
-  restriktiv ist und den Override fälschlich NICHT anwendet?
-- Ist es ein Problem, dass `daily_closes` (aus `fetch_daily_closes()`) nach
-  dem ORIGINALEN Börsenkalendertag indiziert ist (`ts.date()` des
-  `interval=1d`-Abrufs, ohne Zeitzonenumrechnung), während die
-  `local_dates`-Menge in `bucket_hourly()` ebenfalls aus den ORIGINALEN
-  (nicht NY-konvertierten) Stundenbalken-Zeitstempeln kommt? Sind das
-  garantiert dieselben Kalendertage, oder könnte es hier eine stille
-  Off-by-one-Verschiebung geben (z.B. durch Sommerzeit-Umstellung, oder
-  weil `yfinance`/`yfinance-cache` Tagesbalken manchmal mit einem
-  Mitternachts-Zeitstempel ohne echte Uhrzeit-Bedeutung liefert)?
-- Ist `retry()` (siehe Abschnitt Hilfsfunktionen) für `fetch_daily_closes()`
-  angemessen, gegeben dass bei Fehlschlag einfach ein leeres Dict
-  zurückgegeben wird (stiller Fallback auf die alte Stundenbalken-Logik)?
-  Sollte das lauter fehlschlagen oder ist der stille Fallback hier
-  gewünscht (Robustheit vor Vollständigkeit)?
-- Sollte diese Override-Logik auch für andere Instrumente mit früh
-  endender Sitzung gelten (aktuell nur DAX in der Liste, aber z.B. auch
-  US-Cash-Indizes `^GSPC`/`^DJI`/`^NDX`/`^RUT`, deren reguläre Sitzung um
-  16:00 ET endet, knapp vor 16:59)? Bisher wurde das nur für DAX empirisch
-  bestätigt als nötig (US-Werte stimmten in Stichproben schon mit der
-  Referenz überein), aber ist das strukturell auch für die US-Indizes ein
-  Risiko?
+### 4c. Seitdem umgesetzt: zwei Robustheits-Fixes
+
+1. Warnung (`print`), wenn `fetch_daily_closes()` für einen Ticker aus
+   `DAILY_CLOSE_OVERRIDE_TICKERS` fehlschlägt (leeres Dict) und der Lauf
+   dadurch lautlos auf den ungenaueren Stundenbalken-Fallback zurückfällt
+   (siehe `compute_instrument()`).
+2. `main()` schreibt `signals.json` NICHT und beendet sich mit Exit-Code 1,
+   wenn `payload["signals"]` leer ist (z.B. kompletter Yahoo-Ausfall) —
+   verhindert, dass eine leere Datei die zuletzt funktionierende Version
+   überschreibt und eine GitHub Action trotzdem grün zeigt.
+
+**Bitte diese beiden Stellen im Code unten (in `compute_instrument()` bzw.
+`main()`) auf Korrektheit prüfen — sind sie so wie gedacht wirksam?**
+
+### 4d. Neu entdeckt, NICHT im Code behebbar (nur zur Info, kein Review-Punkt)
+
+Bei `^NDX` (USTEC) wurde am 23.09.2026 ein Fall gefunden, in dem sowohl
+Yahoos Stundenbalken (H=30696,28) als auch Yahoos **nativer Tagesbalken**
+(H=30706,23) das tatsächliche Tageshoch unterschätzten — ein echter Broker-
+Feed (ICMARKETS-CFD) zeigte H=30795,80. Anders als beim DAX-Fall (4b/4c) gibt
+es hier keine Yahoo-interne Datenquelle, die den korrekten Wert liefert — das
+ist eine strukturelle Grenze von Yahoo als Datenquelle für dieses Instrument,
+kein Bug im Code. Nur zur Einordnung, falls dir bei der Prüfung eine ähnliche
+Diskrepanz aus Abschnitt 3 auffällt: die Klassifikationslogik selbst war in
+diesem Fall korrekt, nur die Eingabedaten waren es nicht.
 
 ## 5. Weitere historisch bekannte Sonderfälle (unverändert, zur Info)
 
 - **BTC-USD**: nur Montag–Freitag relevant (Wochenend-Buckets werden
-  verworfen), obwohl BTC technisch 24/7 handelt — explizite Vorgabe der
-  Auftraggeberin.
+  verworfen), obwohl BTC technisch 24/7 handelt.
 - **Unvollständiger laufender Tag**: `bucket_complete()` verwirft den letzten
-  Bucket, wenn "jetzt" (NY-Zeit) noch vor dessen Rollover (18:00 NY) liegt —
-  verhindert, dass ein Live-Zwischenstand als abgeschlossener Handelstag
-  behandelt wird.
+  Bucket, wenn "jetzt" (NY-Zeit) noch vor dessen Rollover (18:00 NY) liegt.
 - **DST-Sicherheit**: Vorwoche wird über reine Kalendertag-Arithmetik
-  berechnet (`today_monday - timedelta(days=7)`), nicht über
-  Millisekunden-Subtraktion, um Sommerzeit-Umstellungen nicht zu einem
-  falschen Wochentag springen zu lassen.
+  berechnet, nicht über Millisekunden-Subtraktion.
+- **Der GitHub-Actions-Cron (`0 3 * * *`) ist beim ersten geplanten
+  Lauf nicht gefeuert** (bekanntes GitHub-Plattformverhalten bei frisch
+  angelegten scheduled workflows, kein Python-Bug, nicht Teil dieses
+  Reviews).
 
-## 6. Vollständiger Quellcode (python/generate_signals.py)
+## 6. Vollständiger Quellcode (python/generate_signals.py, aktueller Stand)
 
 ```python
 #!/usr/bin/env python3
@@ -336,6 +333,9 @@ def compute_instrument(inst, now_ny):
     daily_closes = None
     if inst["ticker"] in DAILY_CLOSE_OVERRIDE_TICKERS:
         daily_closes = fetch_daily_closes(inst["ticker"])
+        if not daily_closes:
+            print(f"WARNUNG: Tagesschluss-Abgleich fuer {inst['ticker']} nicht verfuegbar, "
+                  f"verwende Stundenbalken-Fallback fuer den Schlusskurs.")
     days = bucket_hourly(bars, daily_closes)
 
     if inst["ticker"] == "BTC-USD":
@@ -513,6 +513,13 @@ def main():
     check_rollover(now_ny, args.force)
 
     payload, errors = build_signals(now_ny)
+
+    if not payload["signals"]:
+        print("FEHLER: Kein einziges Instrument erfolgreich -- signals.json NICHT ueberschrieben.")
+        for e in errors:
+            print(f"  - {e}")
+        raise SystemExit(1)
+
     write_signals_file(payload)
     print(f"OK: {len(payload['signals'])} von {len(INSTRUMENTS)} Instrumenten nach {OUTPUT_PATH} geschrieben.")
     if errors:
@@ -527,19 +534,17 @@ if __name__ == "__main__":
 
 ## 7. Was ich von dir brauche
 
-1. Gehe die Klassifikationslogik (`classify()`) Schritt für Schritt durch und
-   bestätige oder widerlege, dass sie exakt die Regeln aus Abschnitt 3 und 4a
-   umsetzt.
-2. Prüfe `bucket_hourly()`/`fetch_daily_closes()` (Abschnitt 4b) speziell auf
-   das Datums-Matching-Risiko — gibt es einen Fall, in dem `local_date` (aus
-   den Stundenbalken) und der Index von `fetch_daily_closes()` (aus dem
-   Tagesbalken) für denselben realen Handelstag unterschiedliche Werte
-   liefern könnten?
-3. Prüfe `compute_instrument()` auf Off-by-one-Fehler bei den Indizes
-   (`today_idx`, `yest_idx`, die Slice-Grenzen in der wk/mo/pw/pm-Schleife).
-4. Gibt es einen Fall, in dem `wk`/`mo` fälschlich den heutigen Tag selbst
-   mit einschließen oder einen Tag doppelt zählen?
-5. Sonstige Korrektheitsfehler, die dir auffallen.
+1. Prüfe speziell die beiden neuen Stellen aus Abschnitt 4c (Warnung bei
+   fehlendem Tagesschluss-Abgleich; Exit-Code/kein Schreiben bei 0 Signalen)
+   auf Korrektheit.
+2. Gehe `classify()` nochmal durch — insbesondere die OUTSIDE-Priorität ganz
+   am Anfang (`if "PDH" in touched and "PDL" in touched`) — gibt es einen
+   Fall, in dem das mit der FRD/FGD/ISD-Logik danach kollidiert?
+3. Off-by-one-Fehler bei Indizes in `compute_instrument()`
+   (`today_idx`, `yest_idx`, `range(1, today_idx)`)?
+4. Sonstige Korrektheitsfehler.
 
-Bitte mit konkreten Beispieldaten (welche Eingabe, welches falsche Ergebnis)
-antworten, keine allgemeinen Stilhinweise.
+Bitte mit konkreten Beispieldaten antworten (welche Eingabe, welches falsche
+Ergebnis), keine allgemeinen Stilhinweise. Und bitte Behauptungen über
+Bibliotheksverhalten (wie in 4b) nicht als Tatsache formulieren, ohne sie zu
+kennzeichnen — im Zweifel als Frage stellen statt als Befund.
