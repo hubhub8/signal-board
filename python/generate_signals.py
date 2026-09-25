@@ -474,23 +474,32 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Signal-Board Datenpipeline")
     parser.add_argument(
         "--force", action="store_true",
-        help="Rollover-Check ueberspringen (z.B. fuer manuelle Testlaeufe vor 18:00 NY)",
+        help="Rollover-Hinweis unterdruecken (der Lauf wird nicht mehr abgebrochen)",
     )
     return parser.parse_args()
 
 
 def check_rollover(now_ny, force):
-    """Sicherheitsnetz VOR dem eigentlichen Lauf: bricht klar ab, wenn der
-    18:00-NY-Rollover noch gar nicht erreicht ist -- verhindert einen Lauf,
-    dessen 'letzter Handelstag' noch der laufende, unfertige Tag waere. Dies
-    ist ein schneller globaler Vorab-Check; die eigentliche, praezise Pruefung
-    pro Instrument macht weiterhin bucket_complete() in compute_instrument()."""
+    """Hinweis VOR dem eigentlichen Lauf -- bricht NICHT mehr ab.
+
+    Vorfall 25.09.2026: Der GitHub-Actions-Scheduler hat den naechtlichen Lauf
+    5,5 h verspaetet gestartet (03:00 UTC geplant, 08:34 UTC gefeuert = 04:34
+    NY). Der hier frueher stehende harte Abbruch hat den Lauf deshalb mit
+    Exit-Code 1 beendet, der Commit-Schritt wurde uebersprungen und das Board
+    blieb einen Tag alt -- obwohl das Ergebnis identisch gewesen waere:
+
+    Innerhalb des offenen Handelstagsfensters [18:00 D-1, 18:00 D) liefert
+    trading_day_of() immer D, und der noch laufende Bucket D wird von
+    bucket_complete() ohnehin verworfen. days[-1] ist damit immer der zuletzt
+    ABGESCHLOSSENE Tag D-1 -- egal ob der Lauf um 19:00 NY am Vortag oder um
+    04:00 NY am Folgetag startet. Die praezise Absicherung pro Instrument
+    leistet weiterhin bucket_complete() in compute_instrument(); dieser Check
+    liefert nur noch Kontext fuers Log.
+    """
     if now_ny.hour < ROLLOVER_HOUR_NY and not force:
-        raise SystemExit(
-            f"Rollover noch nicht erreicht ({now_ny.strftime('%H:%M %Z')}, "
-            f"Rollover ist {ROLLOVER_HOUR_NY}:00 NY). Abbruch -- mit --force "
-            f"ueberschreiben (z.B. fuer manuelle Testlaeufe)."
-        )
+        print(f"HINWEIS: NY-Zeit {now_ny.strftime('%H:%M %Z')} liegt noch vor dem "
+              f"{ROLLOVER_HOUR_NY}:00-Rollover. Es wird der zuletzt abgeschlossene "
+              f"Handelstag verwendet.")
 
 
 def main():

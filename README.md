@@ -103,13 +103,24 @@ Der Workflow laeuft um **`0 3 * * *` (03:00 UTC)**. Herleitung:
   konstant bei 6 Stunden (Sommer) bzw. 6 Stunden (Winter) -- anders als beim
   vorherigen `22:00 UTC`-Ansatz, der im Winter VOR dem Rollover gelegen haette.
 
-**Rollover-Check als Sicherheitsnetz:** `generate_signals.py` prueft vor jedem
-Lauf die aktuelle NY-Zeit (`check_rollover()`). Liegt sie vor 18:00 NY, bricht
-das Skript mit einer klaren Fehlermeldung ab, statt versehentlich einen noch
-laufenden Handelstag als "gestern" zu behandeln. Fuer manuelle Testlaeufe vor
-18:00 NY: `python generate_signals.py --force` (ueberspringt den Check). Das
-ist ein grober globaler Vorab-Check -- die praezise Pruefung pro Instrument
-(`bucket_complete()`) bleibt zusaetzlich bestehen.
+**Rollover-Hinweis -- kein Abbruch mehr (seit 25.09.2026):** `generate_signals.py`
+meldet vor jedem Lauf die aktuelle NY-Zeit (`check_rollover()`). Liegt sie vor
+18:00 NY, erscheint ein Hinweis im Log, der Lauf laeuft aber normal weiter.
+
+Grund: Der GitHub-Actions-Scheduler hat den naechtlichen Lauf am 25.09.2026 um
+5,5 Stunden verspaetet gestartet (03:00 UTC geplant, 08:34 UTC gefeuert = 04:34
+NY). Der frueher hier stehende harte Abbruch hat den Lauf daraufhin mit
+Exit-Code 1 beendet, der Commit-Schritt wurde uebersprungen und das Board blieb
+einen Tag veraltet -- obwohl das Ergebnis identisch gewesen waere. Denn
+innerhalb des offenen Handelstagsfensters `[18:00 D-1, 18:00 D)` liefert
+`trading_day_of()` immer `D`, und der noch laufende Bucket `D` wird von
+`bucket_complete()` ohnehin verworfen: `days[-1]` ist damit immer der zuletzt
+ABGESCHLOSSENE Tag `D-1`, unabhaengig davon, ob der Lauf um 19:00 NY am Vortag
+oder um 04:00 NY am Folgetag startet. Die praezise Absicherung pro Instrument
+leistet weiterhin `bucket_complete()` in `compute_instrument()`.
+
+`python generate_signals.py --force` unterdrueckt nur noch den Hinweis (fuer
+manuelle Testlaeufe); noetig ist das nicht mehr.
 
 ## Cloudflare Setup
 
@@ -150,12 +161,11 @@ Verknuepfung, damit Cloudflare Pages bei jedem Push automatisch neu deployt:
 ```bash
 cd python
 pip install -r requirements.txt
-python generate_signals.py --force
+python generate_signals.py
 ```
 
-`--force` ist noetig, wenn NY-Zeit gerade vor 18:00 liegt (Rollover-Check,
-siehe unten) -- ohne `--force` bricht das Skript dann bewusst mit einer
-Fehlermeldung ab, statt einen noch laufenden Handelstag auszuwerten.
+`--force` ist nicht mehr noetig: der frueher vorhandene Abbruch vor dem
+18:00-NY-Rollover ist seit 25.09.2026 ein reiner Hinweis (siehe unten).
 
 Schreibt `public/data/signals.json`. Kann sowohl aus `python/` (`python
 generate_signals.py`) als auch vom Repo-Root (`python python/generate_signals.py`,
