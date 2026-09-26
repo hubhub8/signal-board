@@ -110,8 +110,8 @@ def fetch_hour_bars(ticker):
     NY-Zeit umgerechnet (tz-aware), damit die Buendelung unabhaengig von der
     Boersenzeitzone des jeweiligen Tickers funktioniert. 'local_date' behaelt
     zusaetzlich das Datum in der ORIGINALEN Boersenzeitzone (vor der NY-
-    Umrechnung) -- wird fuer den Tagesschluss-Abgleich in DAILY_CLOSE_OVERRIDE
-    gebraucht."""
+    Umrechnung) -- wird fuer den Tagesbalken-Abgleich in
+    DAILY_BAR_OVERRIDE_TICKERS gebraucht."""
 
     def _do():
         # yfinance-cache hat kein auto_adjust= (Signatur weicht von reinem
@@ -146,19 +146,26 @@ def fetch_hour_bars(ticker):
 # Schlussauktion, nur den letzten Balken der regulaeren Sitzung -- das ergab
 # bei DE40 am 23.09.2026 einen um 16 Punkte falschen Schlusskurs (25426,55
 # statt echtem Xetra-Schluss 25410,63), der in Grenzfaellen die Klassifikation
-# kippen kann. Fuer diese Ticker wird der Schluss zusaetzlich mit Yahoos
-# nativem Tagesbalken abgeglichen (der die Auktion korrekt enthaelt) --
-# bewusst NICHT fuer alle Instrumente, da das Projekt aus gutem Grund nie
-# native Tagesbalken fuer Bereich/Buendelung vertraut (siehe Kommentar bei
-# trading_day_of/bucket_hourly) und diese gezielte Ausnahme nur den
-# Schlusskurs betrifft, nicht Hoch/Tief/Handelstag-Zuordnung.
-DAILY_CLOSE_OVERRIDE_TICKERS = {"^GDAXI"}
+# kippen kann.
+#
+# Seit 25.09.2026 wird fuer diese Ticker der GESAMTE Tagesbalken herangezogen
+# (Hoch/Tief/Schluss), nicht mehr nur der Schlusskurs. Grund: Wird nur der
+# Schluss ersetzt, koennen die Tageswerte in sich widerspruechlich werden --
+# der Schluss aus der Tagesdatei (mit Auktion) lag bei DE40 an 8 von 66 Tagen
+# AUSSERHALB der Spanne aus den Stundenbalken (7x unter dem Tief, 1x ueber dem
+# Hoch), z.B. 07.07.2026: Stunden l=25475,49 h=25811,97, Tagesschluss 25465,25.
+# Folgen: der Close-Marker wurde ausserhalb des Spannenbalkens gezeichnet und
+# ein echtes PDH/PDL konnte unbemerkt bleiben.
+#
+# Bewusst NICHT fuer alle Instrumente -- und weiterhin NICHT fuer die
+# Handelstag-Zuordnung oder die Buendelung: nur Hoch/Tief/Schluss des
+# betroffenen Tages stammen aus dem Tagesbalken.
+DAILY_BAR_OVERRIDE_TICKERS = {"^GDAXI"}
 
 
-def fetch_daily_closes(ticker):
-    """Holt native Tagesbalken und liefert die von Yahoo autoritativ
-    berechneten Schlusskurse (inkl. Schlussauktion), indiziert nach dem
-    Kalendertag in der Boersenzeitzone des Tickers."""
+def fetch_daily_bars(ticker):
+    """Holt native Tagesbalken und liefert Hoch/Tief/Schluss je Kalendertag in
+    der Boersenzeitzone des Tickers (Schluss inklusive Schlussauktion)."""
 
     def _do():
         df = yfc.Ticker(ticker).history(
@@ -174,12 +181,17 @@ def fetch_daily_closes(ticker):
         return {}
     df = flatten_columns(df)
 
-    closes = {}
+    out = {}
     for ts, row in df.iterrows():
-        c = safe_float(row.get("Close"))
-        if c is not None:
-            closes[ts.date()] = c
-    return closes
+        bar = {
+            "o": safe_float(row.get("Open")),
+            "h": safe_float(row.get("High")),
+            "l": safe_float(row.get("Low")),
+            "c": safe_float(row.get("Close")),
+        }
+        if bar["c"] is not None:
+            out[ts.date()] = bar
+    return out
 
 
 # ===========================
@@ -193,14 +205,18 @@ def trading_day_of(ny_dt):
     return d
 
 
-def bucket_hourly(bars, daily_closes=None):
+def bucket_hourly(bars, daily_bars=None):
     """Buendelt Stundenbalken zu Handelstagen. Schluss = letzter Balken bis
     einschliesslich 16:59 NY (nicht exakte Minutenuebereinstimmung), sonst
-    der letzte verfuegbare Balken des Tages. Falls daily_closes uebergeben
-    wird (siehe DAILY_CLOSE_OVERRIDE_TICKERS) und ein passender nativer
-    Tagesschluss existiert, ersetzt dieser den stundenbalken-basierten
-    Schluss -- Hoch/Tief/Handelstag-Zuordnung bleiben unangetastet."""
-    daily_closes = daily_closes or {}
+    der letzte verfuegbare Balken des Tages.
+
+    Falls daily_bars uebergeben wird (siehe DAILY_BAR_OVERRIDE_TICKERS) und ein
+    passender nativer Tagesbalken existiert, stammen Hoch/Tief/Schluss dieses
+    Tages aus dem Tagesbalken (er enthaelt die Schlussauktion). Gebildet wird
+    die VEREINIGUNG aus Stunden- und Tagesbalken (max/min): so geht kein
+    Extremwert der Stundenbalken verloren, und der Schluss liegt garantiert
+    innerhalb von [l, h]. Die Handelstag-Zuordnung bleibt unangetastet."""
+    daily_bars = daily_bars or {}
     buckets = {}
     for b in bars:
         day = trading_day_of(b["ts"])
@@ -220,9 +236,14 @@ def bucket_hourly(bars, daily_closes=None):
 
         local_dates = {b["local_date"] for b in day_bars}
         if len(local_dates) == 1:
-            override = daily_closes.get(next(iter(local_dates)))
-            if override is not None:
-                c = override
+            override = daily_bars.get(next(iter(local_dates)))
+            if override:
+                if override["c"] is not None:
+                    c = override["c"]
+                if override["h"] is not None:
+                    h = max(h, override["h"])
+                if override["l"] is not None:
+                    l = min(l, override["l"])
 
         days.append({"day": day, "o": day_bars[0]["o"], "h": h, "l": l, "c": c})
     return days
@@ -263,6 +284,16 @@ def day_dir(cur, prev):
     return None
 
 
+def is_outside_day(cur, prev):
+    """Outside Day: heutiges Hoch UND Tief liegen beide jenseits des Vortags.
+    Muss mit der OUTSIDE-Pruefung in classify() uebereinstimmen (dort ueber die
+    'touched'-Liste PDH+PDL, also dieselbe Regel) -- bei Aenderungen beide
+    Stellen anpassen."""
+    if prev is None:
+        return False
+    return cur["h"] > prev["h"] and cur["l"] < prev["l"]
+
+
 # ===========================
 # PRO INSTRUMENT: Buendelung + Vorwoche/Vormonat/wk/mo
 # ===========================
@@ -271,17 +302,27 @@ def compute_instrument(inst, now_ny):
     if len(bars) < 10:
         raise ValueError("zu wenige Balken")
 
-    daily_closes = None
-    if inst["ticker"] in DAILY_CLOSE_OVERRIDE_TICKERS:
-        daily_closes = fetch_daily_closes(inst["ticker"])
-        if not daily_closes:
-            # fetch_daily_closes() faengt eigene Fehler ab und gibt dann ein
+    daily_bars = None
+    if inst["ticker"] in DAILY_BAR_OVERRIDE_TICKERS:
+        daily_bars = fetch_daily_bars(inst["ticker"])
+        if not daily_bars:
+            # fetch_daily_bars() faengt eigene Fehler ab und gibt dann ein
             # leeres Dict zurueck (Robustheit) -- das darf aber nicht lautlos
-            # passieren, sonst faellt der DAX-Schlusskurs-Fix unbemerkt auf
-            # die ungenaue Stundenbalken-Variante zurueck.
-            print(f"WARNUNG: Tagesschluss-Abgleich fuer {inst['ticker']} nicht verfuegbar, "
-                  f"verwende Stundenbalken-Fallback fuer den Schlusskurs.")
-    days = bucket_hourly(bars, daily_closes)
+            # passieren, sonst faellt der DAX-Tagesbalken-Abgleich unbemerkt
+            # auf die ungenaue Stundenbalken-Variante zurueck.
+            print(f"WARNUNG: Tagesbalken-Abgleich fuer {inst['ticker']} nicht verfuegbar, "
+                  f"verwende Stundenbalken-Fallback fuer Hoch/Tief/Schluss.")
+    days = bucket_hourly(bars, daily_bars)
+
+    # Selbstpruefung: der Schluss muss innerhalb der Tagesspanne liegen. Nach
+    # der Vereinigung aus Stunden- und Tagesbalken kann das eigentlich nicht
+    # mehr passieren (vorher: 8 von 66 DE40-Tagen), wird aber gemeldet statt
+    # verschwiegen -- beide Quellen sind Yahoo-Serien, die voneinander
+    # abweichen koennen (siehe USTEC-Fall vom 23.09.2026).
+    for d in days:
+        if not (d["l"] <= d["c"] <= d["h"]):
+            print(f"WARNUNG: {inst['sym']} {d['day']}: Schluss ausserhalb der "
+                  f"Tagesspanne (l={d['l']}, c={d['c']}, h={d['h']}).")
 
     if inst["ticker"] == "BTC-USD":
         # BTC ist nur Mo-Fr relevant -- Wochenend-Buckets verwerfen
@@ -307,6 +348,13 @@ def compute_instrument(inst, now_ny):
     today = days[today_idx]
     yest = days[yest_idx]
     dirs = [None] + [day_dir(days[i], days[i - 1]) for i in range(1, len(days))]
+    # Outside Days (Hoch UND Tief jenseits des Vortags) sind eine eigene
+    # Kategorie ohne Richtung und ohne Badges -- sie duerfen deshalb NICHT als
+    # Referenz fuer HCOM/LCOM/HCOW/LCOW herangezogen werden, auch wenn ihr
+    # Schluss jenseits der Vortagesspanne liegt. Gemessen: 15 von 447
+    # Handelstagen (3,4 %) hatten einen solchen Tag; stellte er das Monats-
+    # oder Wochenextrem, fehlte die Badge des heutigen CIB-Tages.
+    outside = [False] + [is_outside_day(days[i], days[i - 1]) for i in range(1, len(days))]
 
     today_day = today["day"]
     today_monday = monday_of(today_day)
@@ -318,9 +366,9 @@ def compute_instrument(inst, now_ny):
     pw_bars, pm_bars = [], []
     for i in range(1, today_idx):
         d = days[i]["day"]
-        if monday_of(d) == today_monday and dirs[i]:
+        if monday_of(d) == today_monday and dirs[i] and not outside[i]:
             wk.append(days[i]["c"])
-        if month_key_of(d) == today_month_key and dirs[i]:
+        if month_key_of(d) == today_month_key and dirs[i] and not outside[i]:
             mo.append(days[i]["c"])
         if monday_of(d) == prev_week_monday:
             pw_bars.append(days[i])
@@ -366,6 +414,8 @@ def classify(item):
 
     direction = 0
     if "PDH" in touched and "PDL" in touched:
+        # Outside Day -- dieselbe Regel wie is_outside_day(); bei Aenderungen
+        # beide Stellen anpassen.
         # Outside Day: heutiges Hoch UND Tief liegen beide jenseits des
         # Vortags -- eigene Kategorie, unabhaengig davon wo der Schluss
         # landet, hat Vorrang vor CIB (auch ein klarer Ausbruch bleibt
