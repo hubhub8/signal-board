@@ -1,2 +1,13 @@
 yfinance-cache>=0.8
 pandas>=2.0
+
+# scikit-learn ist NICHT optional, obwohl es hier nicht direkt benutzt wird:
+# yfinance (Abhaengigkeit von yfinance-cache) importiert beim Reparieren von
+# Null-Kursen lazy `from sklearn.cluster import DBSCAN`
+# (yfinance/scrapers/history.py -> _reconstruct_intervals_batch). scikit-learn
+# ist dort nicht als Abhaengigkeit deklariert. Ohne diesen Eintrag scheitert der
+# Datenabruf komplett: der geplante Lauf am 26.09.2026 uebersprang alle 15
+# Instrumente mit "No module named 'sklearn'" und brach mit Exit-Code 1 ab.
+# Lokal fiel das nicht auf, weil scikit-learn dort aus einem anderen Projekt
+# bereits installiert war.
+scikit-learn>=1.3
